@@ -1,0 +1,17 @@
+:root {
+  font-family: 'JetBrains Mono Variable', monospace;
+  color: #1f2937;
+  background: #f8fafc;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+  margin: 0;
+}
+
+.app-shell,
+.workspace {
+  min-height: 100vh;
+}
