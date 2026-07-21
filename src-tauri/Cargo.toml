@@ -27,4 +27,5 @@ tempfile = "3"
 thiserror = "2"
 
 [build-dependencies]
+png = "0.17"
 tauri-build = { version = "2", features = [] }
