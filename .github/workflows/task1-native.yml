@@ -28,4 +28,4 @@ jobs:
           cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
           git diff --exit-code -- src-tauri/Cargo.lock
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml
-      - run: npm run tauri build -- --debug --locked
+      - run: npm run tauri build -- --debug
