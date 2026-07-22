@@ -34,14 +34,7 @@ impl Canvas {
     }
 }
 
-fn fill_rectangle(
-    canvas: &mut Canvas,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
-    color: Rgba,
-) {
+fn fill_rectangle(canvas: &mut Canvas, x: i32, y: i32, width: i32, height: i32, color: Rgba) {
     for pixel_y in y..y + height {
         for pixel_x in x..x + width {
             canvas.set_pixel(pixel_x, pixel_y, color);
@@ -53,13 +46,7 @@ fn edge(a: (i32, i32), b: (i32, i32), point: (i32, i32)) -> i32 {
     (point.0 - a.0) * (b.1 - a.1) - (point.1 - a.1) * (b.0 - a.0)
 }
 
-fn fill_triangle(
-    canvas: &mut Canvas,
-    a: (i32, i32),
-    b: (i32, i32),
-    c: (i32, i32),
-    color: Rgba,
-) {
+fn fill_triangle(canvas: &mut Canvas, a: (i32, i32), b: (i32, i32), c: (i32, i32), color: Rgba) {
     let min_x = a.0.min(b.0).min(c.0);
     let max_x = a.0.max(b.0).max(c.0);
     let min_y = a.1.min(b.1).min(c.1);
