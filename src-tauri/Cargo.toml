@@ -15,6 +15,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "prism-pad"
 path = "src/main.rs"
 
+[features]
+e2e = ["tauri/devtools"]
+
 [dependencies]
 notify = "8"
 notify-debouncer-mini = "0.7"

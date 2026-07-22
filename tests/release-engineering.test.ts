@@ -11,6 +11,7 @@ const documentWorkflow = readNormalized('e2e/file-workflow.e2e.ts');
 const nativeFiles = readNormalized('src-tauri/src/files.rs');
 const nativeFilesWithWindowsNewlines = nativeFiles.replace(/\n/g, '\r\n');
 const nativeWatch = readNormalized('src-tauri/src/watch.rs');
+const cargoManifest = readNormalized('src-tauri/Cargo.toml');
 const documentActions = readNormalized('tests/document-actions.test.ts');
 const externalChanges = readNormalized('tests/external-changes.test.ts');
 
@@ -87,6 +88,10 @@ describe('release engineering configuration', () => {
     expect(workflow).toContain('src-tauri/target/release/bundle/appimage/*.AppImage');
     expect(workflow).toContain('$installers | ForEach-Object { $_.Length }');
     expect(workflow).toContain('if-no-files-found: warn');
+    expect(cargoManifest).toMatch(/\[features\][\s\S]*e2e = \["tauri\/devtools"\]/);
+    expect(workflow).toContain('npm run tauri build -- --no-bundle --features e2e');
+    expect(workflow).toContain('npm run tauri build -- --bundles ${{ matrix.bundle }}');
+    expect(workflow).not.toContain('npm run tauri build -- --bundles ${{ matrix.bundle }} --features e2e');
   });
 
   it('maps native-dialog gaps to executable native behavior tests without a DOM fake', () => {
