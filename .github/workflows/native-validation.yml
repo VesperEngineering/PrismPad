@@ -3,6 +3,8 @@ name: Native validation
 on:
   push:
     branches: [feature/prismpad-v1]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
