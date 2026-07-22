@@ -2,7 +2,7 @@ use std::{
     env,
     error::Error,
     fs::{self, File},
-    io::BufWriter,
+    io::{BufWriter, Write},
     path::{Path, PathBuf},
 };
 
@@ -34,7 +34,14 @@ impl Canvas {
     }
 }
 
-fn fill_rectangle(canvas: &mut Canvas, x: i32, y: i32, width: i32, height: i32, color: Rgba) {
+fn fill_rectangle(
+    canvas: &mut Canvas,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    color: Rgba,
+) {
     for pixel_y in y..y + height {
         for pixel_x in x..x + width {
             canvas.set_pixel(pixel_x, pixel_y, color);
@@ -46,7 +53,13 @@ fn edge(a: (i32, i32), b: (i32, i32), point: (i32, i32)) -> i32 {
     (point.0 - a.0) * (b.1 - a.1) - (point.1 - a.1) * (b.0 - a.0)
 }
 
-fn fill_triangle(canvas: &mut Canvas, a: (i32, i32), b: (i32, i32), c: (i32, i32), color: Rgba) {
+fn fill_triangle(
+    canvas: &mut Canvas,
+    a: (i32, i32),
+    b: (i32, i32),
+    c: (i32, i32),
+    color: Rgba,
+) {
     let min_x = a.0.min(b.0).min(c.0);
     let max_x = a.0.max(b.0).max(c.0);
     let min_y = a.1.min(b.1).min(c.1);
@@ -97,12 +110,33 @@ fn generate_icon(manifest_dir: &Path) -> Result<(), Box<dyn Error>> {
         [78, 84, 93, 255],
     );
 
-    let file = File::create(&icon_path)?;
-    let mut encoder = Encoder::new(BufWriter::new(file), ICON_SIZE, ICON_SIZE);
+    let png_bytes = encode_png(&canvas)?;
+    let mut icon_file = BufWriter::new(File::create(&icon_path)?);
+    icon_file.write_all(&png_bytes)?;
+    icon_file.flush()?;
+
+    let ico_path = icon_dir.join("icon.ico");
+    write_ico(File::create(&ico_path)?, &png_bytes)?;
+    Ok(())
+}
+
+fn encode_png(canvas: &Canvas) -> Result<Vec<u8>, Box<dyn Error>> {
+    let mut png_bytes = Vec::new();
+    let mut encoder = Encoder::new(&mut png_bytes, ICON_SIZE, ICON_SIZE);
     encoder.set_color(ColorType::Rgba);
     encoder.set_depth(BitDepth::Eight);
     let mut writer = encoder.write_header()?;
     writer.write_image_data(&canvas.pixels)?;
+    Ok(png_bytes)
+}
+
+fn write_ico(mut ico_file: File, png_bytes: &[u8]) -> Result<(), Box<dyn Error>> {
+    ico_file.write_all(&[0, 0, 1, 0, 1, 0])?;
+    ico_file.write_all(&[0, 0, 0, 0, 1, 0, 32, 0])?;
+    ico_file.write_all(&(png_bytes.len() as u32).to_le_bytes())?;
+    ico_file.write_all(&22_u32.to_le_bytes())?;
+    ico_file.write_all(png_bytes)?;
+    ico_file.flush()?;
     Ok(())
 }
 
