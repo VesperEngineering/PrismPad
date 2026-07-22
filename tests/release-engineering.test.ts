@@ -8,6 +8,7 @@ const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
 const startup = readFileSync('e2e/startup.e2e.ts', 'utf8');
 const documentWorkflow = readFileSync('e2e/file-workflow.e2e.ts', 'utf8');
 const nativeFiles = readFileSync('src-tauri/src/files.rs', 'utf8');
+const nativeWatch = readFileSync('src-tauri/src/watch.rs', 'utf8');
 const documentActions = readFileSync('tests/document-actions.test.ts', 'utf8');
 const externalChanges = readFileSync('tests/external-changes.test.ts', 'utf8');
 
@@ -84,5 +85,19 @@ describe('release engineering configuration', () => {
     expect(documentActions).toContain('suggests the selected language suffix and updates path and syntax only after Save As succeeds');
     expect(externalChanges).toContain('prompts instead of overwriting a dirty editor');
     expect(documentWorkflow).not.toContain('mockNativeDialog');
+  });
+
+  it('keeps test-only Rust helpers scoped and production watcher code Clippy-clean', () => {
+    expect(nativeFiles).toMatch(/#\[cfg\(test\)\]\npub fn atomic_write\(/);
+    expect(nativeFiles).toMatch(/#\[cfg\(test\)\]\nfn file_metadata\(/);
+    expect(nativeWatch).toMatch(/#\[cfg\(test\)\]\npub\(crate\) fn debounce_delay\(/);
+    expect(nativeFiles.match(/struct FileSnapshot \{([\s\S]*?)\n\}/)?.[1]).not.toContain('permissions');
+    expect(nativeFiles.match(/struct FileBaseline \{([\s\S]*?)\n\}/)?.[1]).toContain('permissions');
+    expect(nativeWatch).toContain('.filter(|(_, entry)| entry.deadline <= now)');
+    expect(nativeWatch).not.toContain('(entry.deadline <= now).then');
+    expect(nativeFiles).toContain('type ParentDirectorySync = File;');
+    expect(nativeFiles).toContain('struct ParentDirectorySync;');
+    expect(nativeFiles).toContain('Result<ParentDirectorySync, FileError>');
+    expect(nativeFiles).not.toContain('prepare_parent_directory_sync(_path: &Path) -> Result<(), FileError>');
   });
 });

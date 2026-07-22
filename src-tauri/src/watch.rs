@@ -15,6 +15,7 @@ use tauri::{AppHandle, Emitter, State};
 
 const DEBOUNCE_DELAY: Duration = Duration::from_millis(250);
 
+#[cfg(test)]
 pub(crate) fn debounce_delay() -> Duration {
     DEBOUNCE_DELAY
 }
@@ -110,7 +111,8 @@ fn replace_pending<T>(
 fn take_due<T>(pending: &mut HashMap<PathBuf, Pending<T>>, now: Instant) -> Vec<(PathBuf, T)> {
     let due_paths: Vec<PathBuf> = pending
         .iter()
-        .filter_map(|(path, entry)| (entry.deadline <= now).then(|| path.clone()))
+        .filter(|(_, entry)| entry.deadline <= now)
+        .map(|(path, _)| path.clone())
         .collect();
     due_paths
         .into_iter()

@@ -139,6 +139,7 @@ pub fn encode_text(text: &str, line_ending: LineEnding) -> Vec<u8> {
     }
 }
 
+#[cfg(test)]
 pub fn atomic_write(
     path: &Path,
     text: &str,
@@ -163,7 +164,6 @@ struct FileVersion {
 struct FileSnapshot {
     metadata: DiskMetadata,
     version: FileVersion,
-    permissions: fs::Permissions,
     bytes: Vec<u8>,
 }
 
@@ -325,6 +325,7 @@ fn canonical_save_path(path: &Path) -> Result<PathBuf, FileError> {
     Ok(canonical_parent.join(name))
 }
 
+#[cfg(test)]
 fn file_metadata(path: &Path) -> Result<FileVersion, FileError> {
     metadata_version(fs::metadata(path).map_err(io_error)?)
 }
@@ -417,7 +418,6 @@ fn snapshot_file(
             revision: content_revision(&bytes),
         },
         version: after,
-        permissions: file.metadata().map_err(io_error)?.permissions(),
         bytes,
     })
 }
@@ -481,7 +481,13 @@ pub fn content_revision(bytes: &[u8]) -> String {
 }
 
 #[cfg(unix)]
-fn prepare_parent_directory_sync(path: &Path) -> Result<File, FileError> {
+type ParentDirectorySync = File;
+
+#[cfg(not(unix))]
+struct ParentDirectorySync;
+
+#[cfg(unix)]
+fn prepare_parent_directory_sync(path: &Path) -> Result<ParentDirectorySync, FileError> {
     let parent = path
         .parent()
         .ok_or_else(|| FileError::Io("save path has no parent directory".to_owned()))?;
@@ -489,17 +495,17 @@ fn prepare_parent_directory_sync(path: &Path) -> Result<File, FileError> {
 }
 
 #[cfg(not(unix))]
-fn prepare_parent_directory_sync(_path: &Path) -> Result<(), FileError> {
-    Ok(())
+fn prepare_parent_directory_sync(_path: &Path) -> Result<ParentDirectorySync, FileError> {
+    Ok(ParentDirectorySync)
 }
 
 #[cfg(unix)]
-fn sync_parent_directory_handle(directory: &File) -> Result<(), FileError> {
+fn sync_parent_directory_handle(directory: &ParentDirectorySync) -> Result<(), FileError> {
     directory.sync_all().map_err(io_error)
 }
 
 #[cfg(not(unix))]
-fn sync_parent_directory_handle(_directory: &()) -> Result<(), FileError> {
+fn sync_parent_directory_handle(_directory: &ParentDirectorySync) -> Result<(), FileError> {
     Ok(())
 }
 
