@@ -42,6 +42,12 @@ describe('release engineering configuration', () => {
     expect(workflow).toContain('--rev 8c4b34f51b45f5cf08013366d703de464ab871d1');
   });
 
+  it('prints native driver diagnostics when a packaged E2E session fails', () => {
+    expect(workflow).toContain("cat artifacts/tauri-driver.log >&2");
+    expect(workflow).toContain("Get-Content artifacts/tauri-driver.log -ErrorAction SilentlyContinue");
+    expect(workflow).toContain("Get-Content artifacts/tauri-driver.err.log -ErrorAction SilentlyContinue");
+  });
+
   it('uses independent Windows-sensitive commands and audits native capabilities', () => {
     expect(workflow).toContain('- name: Check frontend\n        run: npm run check');
     expect(workflow).toContain('- name: Check packaged E2E types\n        run: npm run check:e2e');

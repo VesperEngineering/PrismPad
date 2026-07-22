@@ -80,7 +80,15 @@ jobs:
           : > artifacts/launch-ms.txt
           xvfb-run -a tauri-driver --port 4444 > artifacts/tauri-driver.log 2>&1 &
           driver_pid=$!
-          trap 'kill "$driver_pid" 2>/dev/null || true' EXIT
+          cleanup() {
+            status=$?
+            if test "$status" -ne 0; then
+              cat artifacts/tauri-driver.log >&2
+            fi
+            kill "$driver_pid" 2>/dev/null || true
+            exit "$status"
+          }
+          trap cleanup EXIT
 
           npm run test:e2e
           for attempt in 1 2 3 4 5; do
@@ -140,6 +148,10 @@ jobs:
             Set-Content artifacts/idle-rss-kb.txt ([math]::Round($app.WorkingSet64 / 1KB))
             $idle.WaitForExit()
             if ($idle.ExitCode -ne 0) { throw 'idle measurement session failed' }
+          } catch {
+            Get-Content artifacts/tauri-driver.log -ErrorAction SilentlyContinue
+            Get-Content artifacts/tauri-driver.err.log -ErrorAction SilentlyContinue
+            throw
           } finally {
             Stop-Process -Id $driver.Id -Force -ErrorAction SilentlyContinue
           }
