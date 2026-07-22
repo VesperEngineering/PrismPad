@@ -69,6 +69,37 @@ describe('PrismEditor lifecycle', () => {
     editor.destroy();
   });
 
+  it('reconfigures every stored editor state without losing text or selection', () => {
+    const editor = createPrismEditor({
+      parent: document.createElement('div'), document: record({ anchor: 2, head: 4 }), dark: false,
+      onTextChange: vi.fn(), onCursorChange: vi.fn(), onNotice: vi.fn()
+    });
+
+    editor.configure({ dark: true, wrap: false, tabSize: 8, indentWithTabs: true, showWhitespace: true, showIndentationGuides: false, fontSize: 18 });
+
+    expect(editor.getView().state.doc.toString()).toBe('first');
+    expect(editor.getView().state.selection.main).toMatchObject({ anchor: 2, head: 4 });
+    expect(editor.getView().state.facet(EditorState.tabSize)).toBe(8);
+    editor.destroy();
+  });
+
+  it('keeps application Find ownership and marks ordinary whitespace plus leading-indent guides only', () => {
+    const host = document.createElement('div');
+    const editor = createPrismEditor({
+      parent: host, document: record({ text: '  alpha beta\nplain  text' }), dark: false,
+      showWhitespace: true, showIndentationGuides: true,
+      onTextChange: vi.fn(), onCursorChange: vi.fn(), onNotice: vi.fn()
+    });
+
+    expect(host.querySelector('.cm-search')).not.toBeInTheDocument();
+    expect(host.querySelectorAll('.cm-highlightSpace').length).toBeGreaterThan(0);
+    expect(host.querySelectorAll('.cm-indent-guide')).toHaveLength(1);
+    editor.configure({ showWhitespace: false, showIndentationGuides: false });
+    expect(host.querySelectorAll('.cm-highlightSpace')).toHaveLength(0);
+    expect(host.querySelectorAll('.cm-indent-guide')).toHaveLength(0);
+    editor.destroy();
+  });
+
   it('recognizes a document-store echo of a user edit without synchronizing it again', () => {
     const onTextChange = vi.fn();
     const onCursorChange = vi.fn();

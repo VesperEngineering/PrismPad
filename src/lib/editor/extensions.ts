@@ -7,20 +7,24 @@ import {
   StreamLanguage,
   type StreamParser
 } from '@codemirror/language';
-import { Compartment, EditorSelection, EditorState, type ChangeSpec, type Extension } from '@codemirror/state';
+import { Compartment, EditorSelection, EditorState, RangeSetBuilder, type ChangeSpec, type Extension } from '@codemirror/state';
 import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
 import {
   crosshairCursor,
   drawSelection,
   dropCursor,
+  Decoration,
   EditorView,
   highlightActiveLine,
   highlightActiveLineGutter,
   highlightSpecialChars,
-  highlightTrailingWhitespace,
+  highlightWhitespace,
   keymap,
   lineNumbers,
-  rectangularSelection
+  rectangularSelection,
+  ViewPlugin,
+  type DecorationSet,
+  type ViewUpdate
 } from '@codemirror/view';
 import type { Command, KeyBinding } from '@codemirror/view';
 import type { LanguageId } from '../domain/languages';
@@ -31,6 +35,8 @@ export const editorTheme = new Compartment();
 export const editorWrapping = new Compartment();
 export const editorIndentation = new Compartment();
 export const editorWhitespace = new Compartment();
+export const editorAppearance = new Compartment();
+export const editorIndentationGuides = new Compartment();
 
 export type EditorExtensionOptions = Readonly<{
   language: LanguageId;
@@ -39,6 +45,8 @@ export type EditorExtensionOptions = Readonly<{
   tabSize?: number;
   indentWithTabs?: boolean;
   showWhitespace?: boolean;
+  showIndentationGuides?: boolean;
+  fontSize?: number;
 }>;
 
 const streamLanguageWithoutCompletionData = (parser: StreamParser<unknown>): Extension => {
@@ -149,6 +157,35 @@ const indentationExtension = (tabSize: number, useTabs: boolean): Extension => [
   indentUnit.of(useTabs ? '\t' : ' '.repeat(tabSize))
 ];
 
+const guideDecorations = (view: EditorView): DecorationSet => {
+  const builder = new RangeSetBuilder<Decoration>();
+  for (const range of view.visibleRanges) {
+    let line = view.state.doc.lineAt(range.from);
+    while (line.from <= range.to) {
+      const indentation = /^[\t ]+/.exec(line.text)?.[0] ?? '';
+      const tabSize = view.state.facet(EditorState.tabSize);
+      let column = 0;
+      for (let offset = 0; offset < indentation.length; offset++) {
+        column += indentation[offset] === '\t' ? tabSize - (column % tabSize) : 1;
+        if (column % tabSize === 0) {
+          builder.add(line.from + offset, line.from + offset + 1, Decoration.mark({ class: 'cm-indent-guide' }));
+        }
+      }
+      if (line.number === view.state.doc.lines) break;
+      line = view.state.doc.line(line.number + 1);
+    }
+  }
+  return builder.finish();
+};
+
+export const createIndentationGuides = (): Extension => ViewPlugin.fromClass(class {
+  decorations: DecorationSet;
+  constructor(view: EditorView) { this.decorations = guideDecorations(view); }
+  update(update: ViewUpdate): void { if (update.docChanged || update.viewportChanged) this.decorations = guideDecorations(update.view); }
+}, { decorations: (plugin) => plugin.decorations });
+
+const appSearchKeymap = searchKeymap.filter((binding) => binding.key !== 'Mod-f' && binding.key !== 'Mod-h');
+
 export const prismPadExtensions = (options: EditorExtensionOptions): Extension[] => [
   lineNumbers(),
   highlightActiveLineGutter(),
@@ -164,10 +201,12 @@ export const prismPadExtensions = (options: EditorExtensionOptions): Extension[]
   indentOnInput(),
   bracketMatching(),
   EditorState.allowMultipleSelections.of(true),
-  keymap.of([...closingPairKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, indentWithTab]),
+  keymap.of([...closingPairKeymap, ...defaultKeymap, ...appSearchKeymap, ...historyKeymap, indentWithTab]),
   editorLanguage.of([]),
   editorTheme.of(prismPadTheme(options.dark)),
   editorWrapping.of(options.wrap === false ? [] : EditorView.lineWrapping),
   editorIndentation.of(indentationExtension(options.tabSize ?? 2, options.indentWithTabs ?? false)),
-  editorWhitespace.of(options.showWhitespace ? highlightTrailingWhitespace() : [])
-];
+  editorWhitespace.of(options.showWhitespace ? highlightWhitespace() ?? [] : []),
+  editorIndentationGuides.of(options.showIndentationGuides === false ? [] : createIndentationGuides()),
+  ,editorAppearance.of(EditorView.theme({ '&': { fontSize: `${options.fontSize ?? 14}px` } }))
+].filter((extension): extension is Extension => extension !== undefined);

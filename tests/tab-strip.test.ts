@@ -31,3 +31,13 @@ it('reorders only tabs from the current document set', async () => {
 
   expect(onReorder).toHaveBeenCalledWith('a', 'b');
 });
+
+it('returns focus to the editor on Escape and exposes one dirty announcement', async () => {
+  const onEscape = vi.fn();
+  render(TabStrip, { documents, activeId: 'a', onActivate: vi.fn(), onClose: vi.fn(), onReorder: vi.fn(), onEscape });
+  const tab = screen.getByRole('tab', { name: /app.py/ });
+  tab.focus();
+  await fireEvent.keyDown(tab, { key: 'Escape' });
+  expect(onEscape).toHaveBeenCalledOnce();
+  expect(screen.getAllByLabelText('Unsaved changes')).toHaveLength(1);
+});

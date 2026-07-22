@@ -1,19 +1,25 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { listen } from '@tauri-apps/api/event';
 import { ask, open, save } from '@tauri-apps/plugin-dialog';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 vi.mock('@tauri-apps/api/webview', () => ({ getCurrentWebview: vi.fn() }));
+vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn() }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ ask: vi.fn(), open: vi.fn(), save: vi.fn() }));
 
 import {
   chooseOpenPaths,
   chooseSavePath,
+  confirmOverwrite,
   confirmLargeFile,
   openFile,
   saveFile,
+  subscribeToExternalChanges,
   subscribeToFileDrops,
+  unwatchPath,
+  watchPath,
   type WriteFileRequest
 } from '../src/lib/native/file-api';
 
@@ -79,6 +85,17 @@ describe('native file API', () => {
     });
   });
 
+  it('requires an explicit, target-specific confirmation before overwriting a conflicted file', async () => {
+    vi.mocked(ask).mockResolvedValue(true);
+
+    await expect(confirmOverwrite('/tmp/changed.txt')).resolves.toBe(true);
+
+    expect(ask).toHaveBeenCalledWith(expect.stringContaining('/tmp/changed.txt'), {
+      title: 'Overwrite changed file?',
+      kind: 'warning'
+    });
+  });
+
   it('subscribes once to native drops and forwards only dropped file paths', async () => {
     const onDrop = vi.fn();
     const unlisten = vi.fn();
@@ -98,6 +115,29 @@ describe('native file API', () => {
     expect(onDrop).toHaveBeenCalledTimes(1);
     expect(onDrop).toHaveBeenCalledWith(['/tmp/a.py']);
     stop();
+    expect(unlisten).toHaveBeenCalledOnce();
+    delete (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+  });
+
+  it('uses canonical native watcher commands and tears down the event listener', async () => {
+    const onChange = vi.fn();
+    const unlisten = vi.fn();
+    let listener: ((event: { payload: { path: string } }) => void) | undefined;
+    vi.mocked(listen).mockImplementation(async (_event, nextListener) => {
+      listener = nextListener as typeof listener;
+      return unlisten;
+    });
+    Object.assign(window, { __TAURI_INTERNALS__: {} });
+
+    await watchPath('/tmp/a.txt');
+    await unwatchPath('/tmp/a.txt');
+    const stop = await subscribeToExternalChanges(onChange);
+    listener?.({ payload: { path: '/tmp/a.txt' } });
+    stop();
+
+    expect(invoke).toHaveBeenCalledWith('watch_path', { path: '/tmp/a.txt' });
+    expect(invoke).toHaveBeenCalledWith('unwatch_path', { path: '/tmp/a.txt' });
+    expect(onChange).toHaveBeenCalledWith('/tmp/a.txt');
     expect(unlisten).toHaveBeenCalledOnce();
     delete (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
   });

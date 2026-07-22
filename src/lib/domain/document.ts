@@ -33,6 +33,8 @@ export type DocumentRecord = Readonly<{
   modifiedMs: number | null;
   size: number;
   revision: string | null;
+  /** Latest externally observed metadata. It does not replace the save baseline. */
+  observedDisk?: DiskMetadata | null;
   dirty: boolean;
   anchor: number;
   head: number;
@@ -51,6 +53,8 @@ export type DocumentStore = Readonly<{
   applyEdit(id: string, text: string): void;
   setSelection(id: string, anchor: number, head: number): void;
   markSaved(id: string, metadata: DiskMetadata, writtenText: string): void;
+  replaceFromDisk(id: string, file: OpenFilePayload): void;
+  observeDisk(id: string, metadata: DiskMetadata): void;
   activate(id: string): void;
   reorder(sourceId: string, targetId: string): void;
   remove(id: string): void;

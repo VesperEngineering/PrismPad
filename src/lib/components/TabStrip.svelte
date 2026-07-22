@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { moveRovingFocus } from '../accessibility/focus';
   type TabDocument = Readonly<{
     id: string;
     title: string;
@@ -11,9 +12,10 @@
     onActivate: (id: string) => void;
     onClose: (id: string) => void;
     onReorder: (sourceId: string, targetId: string) => void;
+    onEscape?: () => void;
   };
 
-  let { documents, activeId, onActivate, onClose, onReorder }: Props = $props();
+  let { documents, activeId, onActivate, onClose, onReorder, onEscape = () => undefined }: Props = $props();
   let dragSourceId: string | null = $state(null);
   let tabs: HTMLButtonElement[] = $state([]);
 
@@ -22,13 +24,22 @@
 
   const moveFocus = (event: KeyboardEvent, index: number, offset: number): void => {
     event.preventDefault();
-    const nextIndex = (index + offset + documents.length) % documents.length;
+    const nextIndex = offset === -index
+      ? moveRovingFocus(index, documents.length, 'Home')
+      : offset === documents.length - 1 - index
+        ? moveRovingFocus(index, documents.length, 'End')
+        : moveRovingFocus(index, documents.length, offset > 0 ? 'ArrowRight' : 'ArrowLeft');
     const next = documents[nextIndex];
     onActivate(next.id);
     tabs[nextIndex]?.focus();
   };
 
   const handleKeydown = (event: KeyboardEvent, index: number): void => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onEscape();
+      return;
+    }
     if (documents.length < 2) {
       return;
     }

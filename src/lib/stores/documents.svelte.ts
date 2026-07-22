@@ -150,6 +150,7 @@ export const createDocumentStore = (
           modifiedMs: null,
           size: 0,
           revision: null,
+          observedDisk: null,
           dirty: false,
           anchor: 0,
           head: 0
@@ -182,6 +183,7 @@ export const createDocumentStore = (
           modifiedMs: payload.modifiedMs,
           size: payload.size,
           revision: payload.revision,
+          observedDisk: null,
           dirty: false,
           anchor: 0,
           head: 0
@@ -218,6 +220,7 @@ export const createDocumentStore = (
         modifiedMs: metadata.modifiedMs,
         size: metadata.size,
         revision: metadata.revision,
+        observedDisk: null,
         savedText: writtenText,
         dirty: source.text !== writtenText
       };
@@ -232,6 +235,7 @@ export const createDocumentStore = (
           modifiedMs: null,
           size: 0,
           revision: null,
+          observedDisk: null,
           dirty: true
         };
         documents = documents.map((document) => {
@@ -248,6 +252,31 @@ export const createDocumentStore = (
           activeId = id;
         }
       }
+    },
+
+    replaceFromDisk: (id: string, file: OpenFilePayload): void => {
+      replace(id, (document) => ({
+        ...document,
+        title: titleForPath(file.path),
+        path: file.path,
+        text: file.text,
+        savedText: file.text,
+        language: languageForPath(file.path).id,
+        encoding: file.encoding,
+        bom: file.bom,
+        lineEnding: file.lineEnding,
+        modifiedMs: file.modifiedMs,
+        size: file.size,
+        revision: file.revision,
+        observedDisk: null,
+        dirty: false,
+        anchor: Math.min(document.anchor, file.text.length),
+        head: Math.min(document.head, file.text.length)
+      }));
+    },
+
+    observeDisk: (id: string, metadata: DiskMetadata): void => {
+      replace(id, (document) => ({ ...document, observedDisk: { ...metadata } }));
     },
 
     activate: (id: string): void => {

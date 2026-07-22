@@ -60,6 +60,19 @@ input:focus-visible {
   outline-offset: 2px;
 }
 
+.cm-indent-guide {
+  box-shadow: inset -1px 0 color-mix(in srgb, var(--muted) 45%, transparent);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .app-shell {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
@@ -115,6 +128,18 @@ input:focus-visible {
   border: 1px solid var(--border);
   background: var(--surface-strong);
   box-shadow: 0 0.3rem 0.8rem color-mix(in srgb, #000 20%, transparent);
+}
+
+.view-menu {
+  left: 8rem;
+}
+
+.edit-menu {
+  left: 6.1rem;
+}
+
+.help-menu {
+  left: 11.7rem;
 }
 
 .file-menu button {
@@ -233,6 +258,15 @@ input:focus-visible {
   font-size: 0.85rem;
 }
 
+.interface-error {
+  width: min(100%, 38rem);
+  margin: auto;
+  padding: 1rem;
+  border: 1px solid var(--accent);
+  color: var(--text);
+  background: var(--surface-strong);
+}
+
 .workspace > [aria-label='Choose a language'] {
   width: min(100%, 46rem);
   margin: auto;
@@ -295,10 +329,59 @@ input:focus-visible {
   min-height: 0;
 }
 
+.editor-preview {
+  display: grid;
+  min-height: 0;
+}
+
+.document-canvas.with-markdown-preview .editor-preview {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 42%);
+}
+
 .editor-pane,
 .editor-host {
   min-height: 0;
   height: 100%;
+}
+
+.markdown-preview {
+  min-width: 0;
+  overflow: auto;
+  padding: 1rem;
+  border-left: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-strong);
+  overflow-wrap: anywhere;
+}
+
+.markdown-preview > :first-child {
+  margin-top: 0;
+}
+
+.markdown-preview :is(pre, code) {
+  font-family: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.markdown-preview pre {
+  overflow: auto;
+  padding: 0.75rem;
+  background: var(--chrome);
+}
+
+.markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markdown-preview :is(th, td) {
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.markdown-preview-error {
+  margin: 0;
+  color: var(--muted);
 }
 
 .find-panel {
@@ -342,6 +425,7 @@ input:focus-visible {
 }
 
 .status-bar {
+  position: relative;
   display: flex;
   min-height: 1.85rem;
   padding: 0.25rem 0.6rem;
@@ -356,6 +440,90 @@ input:focus-visible {
   margin-right: auto;
 }
 
+.status-bar button {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.status-popover {
+  position: absolute;
+  z-index: 3;
+  right: 0.5rem;
+  bottom: calc(100% + 0.25rem);
+  display: grid;
+  min-width: 15rem;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-strong);
+  box-shadow: 0 0.3rem 0.8rem color-mix(in srgb, #000 20%, transparent);
+  gap: 0.45rem;
+}
+
+.status-popover p {
+  margin: 0;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, #000 45%, transparent);
+}
+
+.external-change-dialog,
+.diff-dialog {
+  width: min(100%, 48rem);
+  max-height: min(42rem, calc(100vh - 2rem));
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-strong);
+  box-shadow: 0 0.8rem 2rem color-mix(in srgb, #000 38%, transparent);
+}
+
+.external-change-dialog h2,
+.diff-dialog h2 {
+  margin-top: 0;
+}
+
+.dialog-actions,
+.diff-dialog header,
+.diff-labels {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dialog-actions {
+  justify-content: end;
+  flex-wrap: wrap;
+}
+
+.diff-dialog header button {
+  margin-left: auto;
+}
+
+.diff-labels {
+  justify-content: space-around;
+  margin: 0.75rem 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.diff-host .cm-mergeView {
+  height: min(30rem, 55vh);
+  overflow: auto;
+  border: 1px solid var(--border);
+}
+
 @media (max-width: 34rem) {
   .app-identity {
     display: none;
@@ -367,6 +535,18 @@ input:focus-visible {
 
   .status-bar span:nth-child(3) {
     display: none;
+  }
+}
+
+@media (max-width: 50rem) {
+  .document-canvas.with-markdown-preview .editor-preview {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(14rem, 1fr) minmax(10rem, 38vh);
+  }
+
+  .markdown-preview {
+    border-top: 1px solid var(--border);
+    border-left: 0;
   }
 }
 

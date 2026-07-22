@@ -1,9 +1,12 @@
 import { EditorState, Transaction, type Extension, type StateEffect } from '@codemirror/state';
-import { EditorView, highlightTrailingWhitespace } from '@codemirror/view';
+import { EditorView, highlightWhitespace } from '@codemirror/view';
 import type { DocumentRecord } from '../domain/document';
 import type { LanguageId } from '../domain/languages';
 import {
   editorIndentation,
+  editorIndentationGuides,
+  createIndentationGuides,
+  editorAppearance,
   editorLanguage,
   editorTheme,
   editorWhitespace,
@@ -22,7 +25,9 @@ export type PrismEditorOptions = Readonly<{
   wrap?: boolean;
   tabSize?: number;
   indentWithTabs?: boolean;
-  showWhitespace?: boolean;
+    showWhitespace?: boolean;
+  showIndentationGuides?: boolean;
+  fontSize?: number;
   onTextChange: (id: string, text: string) => void;
   onCursorChange: (id: string, anchor: number, head: number) => void;
   onNotice: (message: string) => void;
@@ -57,6 +62,8 @@ export const createPrismEditor = (options: PrismEditorOptions): PrismEditor => {
     tabSize: options.tabSize ?? 2,
     indentWithTabs: options.indentWithTabs ?? false,
     showWhitespace: options.showWhitespace ?? false
+    ,showIndentationGuides: options.showIndentationGuides ?? true
+    ,fontSize: options.fontSize ?? 14
   };
   let activeId = options.document.id;
   let destroyed = false;
@@ -83,7 +90,9 @@ export const createPrismEditor = (options: PrismEditorOptions): PrismEditor => {
       EditorState.tabSize.of(settings.tabSize),
       indentUnit.of(settings.indentWithTabs ? '\t' : ' '.repeat(settings.tabSize))
     ]),
-    editorWhitespace.reconfigure(settings.showWhitespace ? highlightTrailingWhitespace() : [])
+    editorWhitespace.reconfigure(settings.showWhitespace ? highlightWhitespace() ?? [] : []),
+    editorIndentationGuides.reconfigure(settings.showIndentationGuides ? createIndentationGuides() : [])
+    ,editorAppearance.reconfigure(EditorView.theme({ '&': { fontSize: `${settings.fontSize}px` } }))
   ];
 
   const updateState = (state: EditorState, effects: StateEffect<unknown>[]): EditorState =>

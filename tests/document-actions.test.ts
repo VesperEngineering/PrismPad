@@ -28,6 +28,7 @@ const createDeps = (overrides: Partial<DocumentActionDeps> = {}) => {
       revision: 'saved-revision'
     })),
     confirmLargeFile: vi.fn(async () => true),
+    confirmOverwrite: vi.fn(async () => false),
     showError: vi.fn(),
     ...overrides
   };
@@ -131,15 +132,70 @@ describe('document actions', () => {
       expectedRevision: 'opened-revision',
       overwriteExisting: false
     }));
-    expect(deps.showError).toHaveBeenCalledWith(
-      'Unable to save tool.txt: The file changed on disk after it was opened.'
-    );
+    expect(deps.showError).not.toHaveBeenCalled();
     expect(deps.documents.get(id)).toMatchObject({
       dirty: true,
       modifiedMs: 4,
       size: 9,
       revision: 'opened-revision'
     });
+  });
+
+  it('confirms a normal-save conflict and retries only the same observed disk baseline', async () => {
+    const confirmOverwrite = vi.fn(async () => true);
+    const writeFile = vi.fn()
+      .mockRejectedValueOnce({ code: 'conflict', message: 'The file changed on disk after it was opened.' })
+      .mockResolvedValueOnce({ path: '/tmp/tool.txt', modifiedMs: 11, size: 8, revision: 'saved-revision' });
+    const deps = createDeps({ writeFile }) as DocumentActionDeps & { confirmOverwrite: typeof confirmOverwrite };
+    deps.confirmOverwrite = confirmOverwrite;
+    const id = deps.documents.openPath(openPayload('/tmp/tool.txt'));
+    deps.documents.applyEdit(id, 'editor\n');
+    deps.documents.observeDisk(id, {
+      path: '/tmp/tool.txt', modifiedMs: 10, size: 9, revision: 'disk-revision'
+    });
+
+    await createDocumentActions(deps).save(id);
+
+    expect(confirmOverwrite).toHaveBeenCalledWith('/tmp/tool.txt');
+    expect(writeFile).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      path: '/tmp/tool.txt', expectedModifiedMs: 10, expectedSize: 9,
+      expectedRevision: 'disk-revision', overwriteExisting: true
+    }));
+    expect(deps.documents.get(id)).toMatchObject({ dirty: false, revision: 'saved-revision' });
+  });
+
+  it('keeps a conflict dirty when explicit overwrite confirmation is cancelled', async () => {
+    const confirmOverwrite = vi.fn(async () => false);
+    const writeFile = vi.fn(async () => { throw { code: 'conflict', message: 'changed' }; });
+    const deps = createDeps({ writeFile }) as DocumentActionDeps & { confirmOverwrite: typeof confirmOverwrite };
+    deps.confirmOverwrite = confirmOverwrite;
+    const id = deps.documents.openPath(openPayload('/tmp/tool.txt'));
+    deps.documents.applyEdit(id, 'editor\n');
+
+    await createDocumentActions(deps).save(id);
+
+    expect(confirmOverwrite).toHaveBeenCalledWith('/tmp/tool.txt');
+    expect(writeFile).toHaveBeenCalledTimes(1);
+    expect(deps.showError).not.toHaveBeenCalled();
+    expect(deps.documents.get(id)).toMatchObject({ dirty: true, text: 'editor\n' });
+  });
+
+  it('uses the same explicit conflict path when Save As selects the current file', async () => {
+    const confirmOverwrite = vi.fn(async () => true);
+    const writeFile = vi.fn()
+      .mockRejectedValueOnce({ code: 'conflict', message: 'changed' })
+      .mockResolvedValueOnce({ path: '/tmp/tool.txt', modifiedMs: 12, size: 7, revision: 'saved-revision' });
+    const deps = createDeps({ chooseSavePath: vi.fn(async () => '/tmp/tool.txt'), writeFile }) as DocumentActionDeps & { confirmOverwrite: typeof confirmOverwrite };
+    deps.confirmOverwrite = confirmOverwrite;
+    const id = deps.documents.openPath(openPayload('/tmp/tool.txt'));
+    deps.documents.applyEdit(id, 'editor\n');
+    deps.documents.observeDisk(id, { path: '/tmp/tool.txt', modifiedMs: 10, size: 9, revision: 'disk-revision' });
+
+    await createDocumentActions(deps).saveAs(id);
+
+    expect(confirmOverwrite).toHaveBeenCalledWith('/tmp/tool.txt');
+    expect(writeFile).toHaveBeenCalledTimes(2);
+    expect(deps.documents.get(id)).toMatchObject({ dirty: false, revision: 'saved-revision' });
   });
 
   it('keeps edits made while a save is in flight and records the submitted text as saved', async () => {

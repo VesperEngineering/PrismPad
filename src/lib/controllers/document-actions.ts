@@ -10,6 +10,7 @@ export type DocumentActionDeps = Readonly<{
   readFile: (path: string, allowLarge: boolean) => Promise<OpenFilePayload>;
   writeFile: (request: WriteFileRequest) => Promise<DiskMetadata>;
   confirmLargeFile: (path: string, size: number) => Promise<boolean>;
+  confirmOverwrite: (path: string) => Promise<boolean>;
   showError: (message: string) => void;
 }>;
 
@@ -90,9 +91,9 @@ export const createDocumentActions = (deps: DocumentActionDeps): DocumentActions
     }
 
     savesInProgress.add(id);
+    const samePath = isSamePath(document.path, path);
+    const writtenText = document.text;
     try {
-      const samePath = isSamePath(document.path, path);
-      const writtenText = document.text;
       const request: WriteFileRequest = {
         path,
         text: writtenText,
@@ -106,6 +107,34 @@ export const createDocumentActions = (deps: DocumentActionDeps): DocumentActions
       const metadata = await deps.writeFile(request);
       deps.documents.markSaved(id, metadata, writtenText);
     } catch (error) {
+      if (samePath && isCommandFailure(error) && error.code === 'conflict') {
+        const accepted = await deps.confirmOverwrite(path);
+        if (!accepted) {
+          return;
+        }
+        const current = deps.documents.get(id);
+        if (!current || !isSamePath(current.path, path)) {
+          return;
+        }
+        try {
+          const observed = current.observedDisk ?? await deps.readFile(path, true);
+          const metadata = await deps.writeFile({
+            path,
+            text: writtenText,
+            bom: current.bom,
+            lineEnding: current.lineEnding,
+            expectedModifiedMs: observed.modifiedMs,
+            expectedSize: observed.size,
+            expectedRevision: observed.revision,
+            overwriteExisting: true
+          });
+          deps.documents.markSaved(id, metadata, writtenText);
+          return;
+        } catch (retryError) {
+          deps.showError(`Unable to save ${current.title}: ${errorMessage(retryError)}`);
+          return;
+        }
+      }
       deps.showError(`Unable to save ${document.title}: ${errorMessage(error)}`);
     } finally {
       savesInProgress.delete(id);
