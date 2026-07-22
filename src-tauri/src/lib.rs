@@ -185,21 +185,21 @@ pub fn run() {
                 MenuItem::with_id(app, "help.about", "About PrismPad", true, None::<&str>)?;
             let help = Submenu::with_items(app, "Help", true, &[&help_item])?;
             let mut availability = HashMap::new();
-            for item in [
-                &new_document,
-                &open,
-                &save,
-                &save_as,
-                &close,
-                &find,
-                &replace,
-                &wrap,
-                &preview,
-                &zoom_in,
-                &zoom_out,
-                &theme,
+            for (id, item) in [
+                ("file.new", &new_document),
+                ("file.open", &open),
+                ("file.save", &save),
+                ("file.saveAs", &save_as),
+                ("file.close", &close),
+                ("edit.find", &find),
+                ("edit.replace", &replace),
+                ("view.wrap", &wrap),
+                ("view.markdownPreview", &preview),
+                ("view.zoomIn", &zoom_in),
+                ("view.zoomOut", &zoom_out),
+                ("view.theme", &theme),
             ] {
-                availability.insert(item.id().to_string(), item.clone());
+                availability.insert(id.to_owned(), item.clone());
             }
             for id in [
                 "file.save",

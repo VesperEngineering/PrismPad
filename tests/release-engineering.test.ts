@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 
 const wdio = readFileSync('wdio.conf.ts', 'utf8');
-const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
+const normalizeNewlines = (source: string): string => source.replace(/\r\n?/g, '\n');
+const workflow = normalizeNewlines(readFileSync('.github/workflows/ci.yml', 'utf8'));
+const workflowWithWindowsNewlines = workflow.replace(/\n/g, '\r\n');
 const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
 const startup = readFileSync('e2e/startup.e2e.ts', 'utf8');
 const documentWorkflow = readFileSync('e2e/file-workflow.e2e.ts', 'utf8');
@@ -10,6 +12,10 @@ const documentActions = readFileSync('tests/document-actions.test.ts', 'utf8');
 const externalChanges = readFileSync('tests/external-changes.test.ts', 'utf8');
 
 describe('release engineering configuration', () => {
+  it('keeps multiline workflow assertions portable across Windows checkouts', () => {
+    expect(normalizeNewlines(workflowWithWindowsNewlines)).toContain('- name: Check frontend\n        run: npm run check');
+  });
+
   it('passes the release application through the required Tauri capability and typechecks E2E', () => {
     expect(wdio).toContain("'tauri:options'");
     expect(wdio).toMatch(/application:\s*applicationPath/);
@@ -69,6 +75,7 @@ describe('release engineering configuration', () => {
     expect(workflow).toContain('src-tauri/target/release/bundle/deb/*.deb');
     expect(workflow).toContain('src-tauri/target/release/bundle/appimage/*.AppImage');
     expect(workflow).toContain('$installers | ForEach-Object { $_.Length }');
+    expect(workflow).toContain('if-no-files-found: warn');
   });
 
   it('maps native-dialog gaps to executable native behavior tests without a DOM fake', () => {
