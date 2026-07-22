@@ -57,18 +57,45 @@ cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D w
 cargo test --locked --manifest-path src-tauri/Cargo.toml
 ```
 
-The packaged WebView suite uses Tauri's direct WebDriver integration, not a browser stand-in. First install the driver and create the release-profile executable without an installer:
+The packaged WebView suite drives the real Tauri webview, not a browser stand-in. First create the release-profile executable without an installer:
 
 ```sh
-cargo install tauri-driver --version 2.0.6 --locked
 npm run tauri build -- --no-bundle
 ```
 
-On Ubuntu, start `xvfb-run -a tauri-driver --port 4444` in one terminal, then run `PRISMPAD_E2E_APP=src-tauri/target/release/prism-pad npm run test:e2e` in another. On Windows PowerShell, install the reviewed `msedgedriver-tool` revision with `cargo install --git https://github.com/chippers/msedgedriver-tool --rev 8c4b34f51b45f5cf08013366d703de464ab871d1 --locked`, run it, and ensure the resulting matching `msedgedriver.exe` is on `PATH`. Start `tauri-driver --port 4444`, then run `$env:PRISMPAD_E2E_APP='src-tauri/target/release/prism-pad.exe'; npm run test:e2e`. The executable is supplied through the required `tauri:options` capability; it is not a positional `tauri-driver` argument.
+On Ubuntu, install `tauri-driver` with `cargo install tauri-driver --version 2.0.6 --locked`, start `xvfb-run -a tauri-driver --port 4444` in one terminal, then run `PRISMPAD_E2E_APP=src-tauri/target/release/prism-pad npm run test:e2e` in another. The executable is supplied through the required `tauri:options` capability; it is not a positional `tauri-driver` argument.
+
+Windows uses Microsoft’s documented attach flow. Install the reviewed matching-driver helper, run it, and put the resulting `msedgedriver.exe` on `PATH`:
+
+```powershell
+cargo install --git https://github.com/chippers/msedgedriver-tool --rev 8c4b34f51b45f5cf08013366d703de464ab871d1 --locked
+msedgedriver-tool
+```
+
+Start `msedgedriver --port=4444 --host=127.0.0.1` in one PowerShell terminal. In another, launch a fresh packaged process with its WebView2 debugging endpoint, wait for that endpoint, and run one spec:
+
+```powershell
+$env:PRISMPAD_E2E_APP='src-tauri/target/release/prism-pad.exe'
+$env:PRISMPAD_E2E_DEBUGGER_ADDRESS='127.0.0.1:9222'
+$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS='--remote-debugging-port=9222'
+$app = Start-Process $env:PRISMPAD_E2E_APP -PassThru
+$ready = $false
+do {
+  try { Invoke-WebRequest 'http://127.0.0.1:9222/json/version' -UseBasicParsing | Out-Null; $ready = $true }
+  catch { Start-Sleep -Seconds 1 }
+} until ($ready)
+try {
+  npm run test:e2e -- --spec e2e/startup.e2e.ts
+} finally {
+  Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+}
+```
+
+Repeat with a fresh app process for `e2e/file-workflow.e2e.ts` and each performance or idle spec. The CI workflow is the canonical automated sequence: it applies readiness bounds, cleans up stale WebView2 processes, and waits for port 9222 to close between sessions.
 
 The WebView suite covers startup, editing, unsaved-tab decisions, Markdown preview, settings persistence, and tab ordering. Native file dialogs and installer UI are intentionally not faked through DOM controls. Executable Rust and controller tests cover Save As extension selection, BOM/line-ending round trips, changed-on-disk write conflicts, and external-change decisions, while CI validates generated packages structurally.
 
-The direct `tauri-driver` suite cannot safely seed the native plugin store or automate operating-system dialogs, so it does not claim a packaged path-backed restoration scenario. Metadata-only restoration, unreadable-path handling, and native dialog command wiring remain covered by the unit/integration suite. Adding packaged restoration requires migration to Tauri's WebdriverIO service/plugin or another supported native test hook; PrismPad does not add a production fixture mode for this purpose.
+The packaged WebDriver suite cannot safely seed the native plugin store or automate operating-system dialogs, so it does not claim a packaged path-backed restoration scenario. Metadata-only restoration, unreadable-path handling, and native dialog command wiring remain covered by the unit/integration suite. Adding packaged restoration requires a supported native test hook; PrismPad does not add a production fixture mode for this purpose.
 
 ## Packaging and CI artifacts
 

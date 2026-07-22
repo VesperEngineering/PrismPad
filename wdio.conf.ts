@@ -3,8 +3,8 @@ declare global {
     interface Capabilities {
       'tauri:options'?: {
         application: string;
-        webviewOptions?: { additionalBrowserArguments: string[] };
       };
+      'ms:edgeOptions'?: { debuggerAddress: string };
     }
   }
 }
@@ -14,10 +14,20 @@ if (!applicationPath) {
   throw new Error('PRISMPAD_E2E_APP must point to the release-profile PrismPad executable.');
 }
 
+const debuggerAddress = process.env.PRISMPAD_E2E_DEBUGGER_ADDRESS;
+const capabilities: WebdriverIO.Capabilities[] = debuggerAddress
+  ? [{
+      browserName: 'webview2',
+      'ms:edgeOptions': { debuggerAddress }
+    }]
+  : [{
+      'tauri:options': { application: applicationPath }
+    }];
+
 /**
- * tauri-driver is deliberately started outside WDIO. The exact release-profile
- * application is passed in the Tauri WebDriver capability. This avoids a browser
- * stand-in and makes every spec exercise the actual Tauri webview.
+ * Linux passes the release binary through tauri-driver. Windows launches that
+ * same binary first and attaches EdgeDriver to its ready WebView2 endpoint.
+ * Both paths exercise the actual packaged webview rather than a browser stand-in.
  */
 export const config: WebdriverIO.Config = {
   runner: 'local',
@@ -26,12 +36,7 @@ export const config: WebdriverIO.Config = {
   path: '/',
   specs: ['./e2e/startup.e2e.ts', './e2e/file-workflow.e2e.ts'],
   maxInstances: 1,
-  capabilities: [{
-    'tauri:options': {
-      application: applicationPath,
-      webviewOptions: { additionalBrowserArguments: ['remote-debugging-port=0'] }
-    }
-  }],
+  capabilities,
   logLevel: 'warn',
   bail: 0,
   waitforTimeout: 15_000,

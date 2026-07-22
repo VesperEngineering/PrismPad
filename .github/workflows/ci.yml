@@ -118,41 +118,99 @@ jobs:
         shell: pwsh
         env:
           PRISMPAD_E2E_APP: ${{ matrix.executable }}
+          PRISMPAD_E2E_DEBUGGER_ADDRESS: '127.0.0.1:9222'
           TAURI_DRIVER_PORT: '4444'
+          WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222'
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
           Remove-Item artifacts/launch-ms.txt -ErrorAction SilentlyContinue
-          $driver = Start-Process tauri-driver -ArgumentList '--port', '4444' -PassThru -RedirectStandardOutput artifacts/tauri-driver.log -RedirectStandardError artifacts/tauri-driver.err.log
+          $driver = Start-Process msedgedriver -ArgumentList '--port=4444', '--host=127.0.0.1', '--verbose', '--log-path=artifacts/msedgedriver.log' -PassThru -RedirectStandardOutput artifacts/tauri-driver.log -RedirectStandardError artifacts/tauri-driver.err.log
+
+          function Wait-ForEndpoint([string]$Uri, [string]$Failure) {
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              try {
+                Invoke-WebRequest $Uri -UseBasicParsing | Out-Null
+                return
+              } catch {
+                Start-Sleep -Seconds 1
+              }
+            }
+            throw $Failure
+          }
+
+          function Wait-ForEndpointToClose([string]$Uri, [string]$Failure) {
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              try {
+                Invoke-WebRequest $Uri -UseBasicParsing | Out-Null
+                Start-Sleep -Seconds 1
+              } catch {
+                return
+              }
+            }
+            throw $Failure
+          }
+
+          function Start-PrismPad {
+            $script:app = Start-Process $env:PRISMPAD_E2E_APP -PassThru
+            try {
+              Wait-ForEndpoint 'http://127.0.0.1:9222/json/version' 'packaged WebView2 debugging endpoint did not become ready'
+            } catch {
+              Stop-Process -Id $script:app.Id -Force -ErrorAction SilentlyContinue
+              throw
+            }
+          }
+
+          function Stop-PrismPad {
+            if ($script:app) {
+              Stop-Process -Id $script:app.Id -Force -ErrorAction SilentlyContinue
+              $script:app = $null
+            }
+            Get-Process prism-pad -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Wait-ForEndpointToClose 'http://127.0.0.1:9222/json/version' 'packaged WebView2 debugging endpoint remained open after shutdown'
+          }
+
+          function Invoke-PackagedSpec([string]$Spec, [string]$Failure) {
+            Start-PrismPad
+            try {
+              npm run test:e2e -- --spec $Spec
+              if ($LASTEXITCODE -ne 0) { throw $Failure }
+            } finally {
+              Stop-PrismPad
+            }
+          }
+
           try {
-            npm run test:e2e
-            if ($LASTEXITCODE -ne 0) { throw 'packaged E2E suite failed' }
+            Wait-ForEndpoint 'http://127.0.0.1:4444/status' 'Microsoft Edge WebDriver did not become ready'
+            Invoke-PackagedSpec 'e2e/startup.e2e.ts' 'packaged startup E2E failed'
+            Invoke-PackagedSpec 'e2e/file-workflow.e2e.ts' 'packaged file workflow E2E failed'
             1..5 | ForEach-Object {
               $env:PRISMPAD_LAUNCH_STARTED_MS = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds().ToString()
               $env:PRISMPAD_LAUNCH_METRICS_FILE = (Join-Path $PWD 'artifacts/launch-ms.txt')
-              npm run test:e2e -- --spec e2e/performance.e2e.ts
-              if ($LASTEXITCODE -ne 0) { throw 'launch measurement failed' }
+              Invoke-PackagedSpec 'e2e/performance.e2e.ts' 'launch measurement failed'
             }
             Remove-Item Env:PRISMPAD_LAUNCH_STARTED_MS -ErrorAction SilentlyContinue
             Remove-Item Env:PRISMPAD_LAUNCH_METRICS_FILE -ErrorAction SilentlyContinue
 
             $ready = Join-Path $PWD 'artifacts/idle-ready.txt'
             $env:PRISMPAD_IDLE_READY_FILE = $ready
+            Start-PrismPad
             $idle = Start-Process npm.cmd -ArgumentList 'run', 'test:e2e', '--', '--spec', 'e2e/idle.e2e.ts' -PassThru
             for ($attempt = 0; $attempt -lt 30 -and !(Test-Path $ready); $attempt++) {
               Start-Sleep -Seconds 1
             }
             if (!(Test-Path $ready)) { throw 'packaged application never reached the idle sampling session' }
             Start-Sleep -Seconds 30
-            $app = Get-Process prism-pad -ErrorAction SilentlyContinue | Select-Object -First 1
-            if (!$app) { throw 'idle RSS process was unavailable' }
-            Set-Content artifacts/idle-rss-kb.txt ([math]::Round($app.WorkingSet64 / 1KB))
+            if ($script:app.HasExited) { throw 'idle RSS process was unavailable' }
+            Set-Content artifacts/idle-rss-kb.txt ([math]::Round($script:app.WorkingSet64 / 1KB))
             $idle.WaitForExit()
             if ($idle.ExitCode -ne 0) { throw 'idle measurement session failed' }
           } catch {
+            Get-Content artifacts/msedgedriver.log -ErrorAction SilentlyContinue
             Get-Content artifacts/tauri-driver.log -ErrorAction SilentlyContinue
             Get-Content artifacts/tauri-driver.err.log -ErrorAction SilentlyContinue
             throw
           } finally {
+            Stop-PrismPad
             Stop-Process -Id $driver.Id -Force -ErrorAction SilentlyContinue
           }
       - name: Build release bundles

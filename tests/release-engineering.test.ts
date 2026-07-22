@@ -4,6 +4,7 @@ const normalizeNewlines = (source: string): string => source.replace(/\r\n?/g, '
 const readNormalized = (path: string): string => normalizeNewlines(readFileSync(path, 'utf8'));
 const wdio = readNormalized('wdio.conf.ts');
 const workflow = readNormalized('.github/workflows/ci.yml');
+const readme = readNormalized('README.md');
 const workflowWithWindowsNewlines = workflow.replace(/\n/g, '\r\n');
 const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
 const startup = readNormalized('e2e/startup.e2e.ts');
@@ -24,7 +25,8 @@ describe('release engineering configuration', () => {
     expect(wdio).toContain("'tauri:options'");
     expect(wdio).toMatch(/application:\s*applicationPath/);
     expect(wdio).toContain('PRISMPAD_E2E_APP');
-    expect(wdio).toContain("additionalBrowserArguments: ['remote-debugging-port=0']");
+    expect(wdio).toContain('PRISMPAD_E2E_DEBUGGER_ADDRESS');
+    expect(wdio).toContain("'ms:edgeOptions': { debuggerAddress }");
     expect(packageJson.scripts['check:e2e']).toBe('tsc --noEmit --project tsconfig.e2e.json');
     expect(packageJson.devDependencies).toMatchObject({
       '@types/node': '20.19.43',
@@ -48,6 +50,20 @@ describe('release engineering configuration', () => {
     expect(workflow).toContain("cat artifacts/tauri-driver.log >&2");
     expect(workflow).toContain("Get-Content artifacts/tauri-driver.log -ErrorAction SilentlyContinue");
     expect(workflow).toContain("Get-Content artifacts/tauri-driver.err.log -ErrorAction SilentlyContinue");
+  });
+
+  it('attaches Windows EdgeDriver only after the packaged WebView2 endpoint is ready', () => {
+    expect(workflow).toContain("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222'");
+    expect(workflow).toContain("PRISMPAD_E2E_DEBUGGER_ADDRESS: '127.0.0.1:9222'");
+    expect(workflow).toContain("Start-Process msedgedriver");
+    expect(workflow).toContain("Wait-ForEndpoint 'http://127.0.0.1:9222/json/version'");
+    expect(workflow).toContain("Wait-ForEndpointToClose 'http://127.0.0.1:9222/json/version'");
+    expect(workflow).toContain("'packaged WebView2 debugging endpoint did not become ready'");
+    expect(readme).toContain("$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS='--remote-debugging-port=9222'");
+    expect(readme).toContain("$env:PRISMPAD_E2E_DEBUGGER_ADDRESS='127.0.0.1:9222'");
+    expect(readme).toContain('msedgedriver --port=4444 --host=127.0.0.1');
+    expect(readme).toContain('$ready = $false');
+    expect(readme).toMatch(/try \{\s+npm run test:e2e[\s\S]*finally \{\s+Stop-Process/);
   });
 
   it('uses independent Windows-sensitive commands and audits native capabilities', () => {
