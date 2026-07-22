@@ -1,7 +1,34 @@
 :root {
-  font-family: 'JetBrains Mono Variable', monospace;
-  color: #1f2937;
-  background: #f8fafc;
+  color-scheme: light;
+  --chrome: #ecebe7;
+  --surface: #fffdf8;
+  --surface-strong: #ffffff;
+  --text: #202124;
+  --muted: #66686e;
+  --border: #c9c8c3;
+  --accent: #245dff;
+  --syntax-keyword: #d62445;
+  --syntax-string: #92278f;
+  --syntax-function: #005fba;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --chrome: #15181b;
+  --surface: #0d1012;
+  --surface-strong: #191d21;
+  --text: #f1eee8;
+  --muted: #9ba0a6;
+  --border: #343a40;
+  --accent: #ff727f;
+  --syntax-keyword: #ff7b87;
+  --syntax-string: #d7a8ff;
+  --syntax-function: #69d5e7;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 html,
@@ -11,7 +38,299 @@ body,
   margin: 0;
 }
 
-.app-shell,
-.workspace {
+body {
+  background: var(--chrome);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text);
+  background: var(--surface-strong);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   min-height: 100vh;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.menu-bar {
+  display: flex;
+  align-items: center;
+  min-height: 2.35rem;
+  padding: 0 0.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--chrome);
+  gap: 0.5rem;
+}
+
+.app-identity {
+  padding: 0 0.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-menu {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.app-menu button,
+.theme-toggle {
+  min-height: 1.75rem;
+  padding: 0.1rem 0.45rem;
+  border-color: transparent;
+  background: transparent;
+}
+
+.app-menu button:hover,
+.theme-toggle:hover {
+  border-color: var(--border);
+  background: var(--surface-strong);
+}
+
+.theme-toggle {
+  margin-left: auto;
+}
+
+.tab-strip {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--chrome);
+}
+
+.empty-tab-strip {
+  min-height: 2.35rem;
+}
+
+.tab-entry {
+  display: flex;
+  flex: 0 0 auto;
+  min-width: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+}
+
+.document-tab {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 2.35rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.65rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  gap: 0.45rem;
+  cursor: pointer;
+}
+
+.document-tab:hover {
+  background: color-mix(in srgb, var(--surface-strong) 55%, transparent);
+}
+
+.document-tab[aria-selected='true'] {
+  background: var(--surface-strong);
+  box-shadow: inset 0 -2px var(--accent);
+}
+
+.tab-title {
+  overflow: hidden;
+  max-width: 16rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dirty-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.tab-close {
+  display: grid;
+  width: 2rem;
+  min-height: 2.35rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  place-items: center;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tab-close:hover {
+  color: var(--surface-strong);
+  background: var(--accent);
+}
+
+.workspace {
+  display: grid;
+  min-height: 0;
+  place-items: stretch;
+  background: var(--surface);
+}
+
+.workspace > [aria-label='Choose a language'] {
+  width: min(100%, 46rem);
+  margin: auto;
+  padding: clamp(1.5rem, 6vw, 4rem) 1.25rem;
+}
+
+.workspace h1 {
+  max-width: 18ch;
+  margin: 0 0 1.5rem;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+}
+
+.workspace label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.workspace input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text);
+  background: var(--surface-strong);
+}
+
+.workspace [aria-label='Languages'] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  margin: 1rem 0;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.workspace [aria-label='Languages'] button,
+.workspace > [aria-label='Choose a language'] > button {
+  min-height: 2.4rem;
+  padding: 0.35rem 0.55rem;
+  border-width: 0 1px 1px 0;
+  border-radius: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workspace [aria-label='Languages'] button:hover,
+.workspace > [aria-label='Choose a language'] > button:hover {
+  color: var(--surface-strong);
+  background: var(--accent);
+}
+
+.document-canvas {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+.editor-pane,
+.editor-host {
+  min-height: 0;
+  height: 100%;
+}
+
+.find-panel {
+  display: flex;
+  align-items: end;
+  padding: 0.35rem 0.6rem;
+  border-top: 1px solid var(--border);
+  background: var(--chrome);
+  gap: 0.5rem;
+}
+
+.find-panel label {
+  flex: 1 1 12rem;
+  margin: 0;
+}
+
+.find-panel input {
+  min-height: 1.9rem;
+}
+
+.find-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.find-actions button {
+  min-height: 1.9rem;
+}
+
+.editor-notice {
+  position: absolute;
+  right: 1rem;
+  bottom: 3rem;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-strong);
+  font-size: 0.8rem;
+}
+
+.status-bar {
+  display: flex;
+  min-height: 1.85rem;
+  padding: 0.25rem 0.6rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  background: var(--chrome);
+  gap: 0.9rem;
+  font-size: 0.75rem;
+}
+
+.status-bar span:first-child {
+  margin-right: auto;
+}
+
+@media (max-width: 34rem) {
+  .app-identity {
+    display: none;
+  }
+
+  .tab-title {
+    max-width: 9rem;
+  }
+
+  .status-bar span:nth-child(3) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
