@@ -193,9 +193,9 @@ fn atomic_write_checked(
     line_ending: LineEnding,
     expected_target: &ExpectedTarget,
 ) -> Result<(), FileError> {
-    let parent = path.parent().ok_or_else(|| {
-        FileError::Io("save path has no parent directory".to_owned())
-    })?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| FileError::Io("save path has no parent directory".to_owned()))?;
     let parent_sync = prepare_parent_directory_sync(path)?;
     let mut temporary = NamedTempFile::new_in(parent).map_err(io_error)?;
     let mut bytes = Vec::with_capacity(text.len() + usize::from(bom) * 3);
@@ -278,7 +278,9 @@ fn write_text_file_impl(request: WriteFileRequest) -> Result<DiskMetadata, FileE
 fn canonical_existing_file(path: &Path) -> Result<PathBuf, FileError> {
     let canonical_path = fs::canonicalize(path).map_err(io_error)?;
     if !fs::metadata(&canonical_path).map_err(io_error)?.is_file() {
-        return Err(FileError::Io("path does not point to a regular file".to_owned()));
+        return Err(FileError::Io(
+            "path does not point to a regular file".to_owned(),
+        ));
     }
     Ok(canonical_path)
 }
@@ -298,7 +300,9 @@ fn canonical_save_path(path: &Path) -> Result<PathBuf, FileError> {
         .unwrap_or_else(|| Path::new("."));
     let canonical_parent = fs::canonicalize(parent).map_err(io_error)?;
     if !fs::metadata(&canonical_parent).map_err(io_error)?.is_dir() {
-        return Err(FileError::Io("save path parent is not a directory".to_owned()));
+        return Err(FileError::Io(
+            "save path parent is not a directory".to_owned(),
+        ));
     }
     Ok(canonical_parent.join(name))
 }
@@ -428,9 +432,9 @@ pub fn content_revision(bytes: &[u8]) -> String {
 
 #[cfg(unix)]
 fn prepare_parent_directory_sync(path: &Path) -> Result<File, FileError> {
-    let parent = path.parent().ok_or_else(|| {
-        FileError::Io("save path has no parent directory".to_owned())
-    })?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| FileError::Io("save path has no parent directory".to_owned()))?;
     File::open(parent).map_err(io_error)
 }
 
