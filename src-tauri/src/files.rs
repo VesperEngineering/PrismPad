@@ -193,7 +193,9 @@ fn atomic_write_checked(
     line_ending: LineEnding,
     expected_target: &ExpectedTarget,
 ) -> Result<(), FileError> {
-    let parent = path.parent().ok_or_else(|| FileError::Io("save path has no parent directory".to_owned()))?;
+    let parent = path.parent().ok_or_else(|| {
+        FileError::Io("save path has no parent directory".to_owned())
+    })?;
     let parent_sync = prepare_parent_directory_sync(path)?;
     let mut temporary = NamedTempFile::new_in(parent).map_err(io_error)?;
     let mut bytes = Vec::with_capacity(text.len() + usize::from(bom) * 3);
@@ -202,12 +204,18 @@ fn atomic_write_checked(
     }
     bytes.extend(encode_text(text, line_ending));
 
-    temporary.as_file_mut().write_all(&bytes).map_err(io_error)?;
+    temporary
+        .as_file_mut()
+        .write_all(&bytes)
+        .map_err(io_error)?;
     temporary.as_file_mut().flush().map_err(io_error)?;
     temporary.as_file().sync_all().map_err(io_error)?;
     let permissions = verify_expected_target(path, expected_target)?;
     if let Some(permissions) = permissions {
-        temporary.as_file().set_permissions(permissions).map_err(io_error)?;
+        temporary
+            .as_file()
+            .set_permissions(permissions)
+            .map_err(io_error)?;
         temporary.as_file().sync_all().map_err(io_error)?;
     }
 
@@ -314,7 +322,11 @@ fn metadata_version(metadata: fs::Metadata) -> Result<FileVersion, FileError> {
     })
 }
 
-fn snapshot_file(path: &Path, allow_large: bool, check_binary: bool) -> Result<FileSnapshot, FileError> {
+fn snapshot_file(
+    path: &Path,
+    allow_large: bool,
+    check_binary: bool,
+) -> Result<FileSnapshot, FileError> {
     let mut file = File::open(path).map_err(io_error)?;
     let before = metadata_version(file.metadata().map_err(io_error)?)?;
     let mut bytes = vec![0; before.size.min(BINARY_PROBE_SIZE as u64) as usize];
@@ -357,7 +369,11 @@ fn snapshot_file(path: &Path, allow_large: bool, check_binary: bool) -> Result<F
     })
 }
 
-fn read_bounded<R: Read>(reader: &mut R, bytes: &mut Vec<u8>, cap: u64) -> Result<BoundedRead, FileError> {
+fn read_bounded<R: Read>(
+    reader: &mut R,
+    bytes: &mut Vec<u8>,
+    cap: u64,
+) -> Result<BoundedRead, FileError> {
     if bytes.len() as u64 > cap {
         return Ok(BoundedRead::Exceeded);
     }
@@ -412,7 +428,9 @@ pub fn content_revision(bytes: &[u8]) -> String {
 
 #[cfg(unix)]
 fn prepare_parent_directory_sync(path: &Path) -> Result<File, FileError> {
-    let parent = path.parent().ok_or_else(|| FileError::Io("save path has no parent directory".to_owned()))?;
+    let parent = path.parent().ok_or_else(|| {
+        FileError::Io("save path has no parent directory".to_owned())
+    })?;
     File::open(parent).map_err(io_error)
 }
 
@@ -469,7 +487,10 @@ mod tests {
         let mut reader = Cursor::new(b"cdefgh".to_vec());
         let mut bytes = b"ab".to_vec();
 
-        assert_eq!(read_bounded(&mut reader, &mut bytes, 4).unwrap(), BoundedRead::Exceeded);
+        assert_eq!(
+            read_bounded(&mut reader, &mut bytes, 4).unwrap(),
+            BoundedRead::Exceeded
+        );
         assert_eq!(bytes, b"abcde");
     }
 
@@ -500,8 +521,10 @@ mod tests {
         let path = dir.path().join("large.txt");
         std::fs::write(&path, vec![b'a'; MAX_TEXT_FILE_SIZE as usize + 1]).unwrap();
 
-        assert!(matches!(read_text_file(path.to_string_lossy().into_owned(), false), Err(error)
-            if error.code == "large_file" && error.size == Some(MAX_TEXT_FILE_SIZE + 1)));
+        assert!(matches!(
+            read_text_file(path.to_string_lossy().into_owned(), false),
+            Err(error) if error.code == "large_file" && error.size == Some(MAX_TEXT_FILE_SIZE + 1)
+        ));
     }
 
     #[test]
@@ -512,7 +535,15 @@ mod tests {
         let path = folder.join("note.txt");
         std::fs::write(&path, "note").unwrap();
 
-        let result = read_text_file(folder.join(".").join("note.txt").to_string_lossy().into_owned(), false).unwrap();
+        let result = read_text_file(
+            folder
+                .join(".")
+                .join("note.txt")
+                .to_string_lossy()
+                .into_owned(),
+            false,
+        )
+        .unwrap();
         assert_eq!(
             result.path,
             std::fs::canonicalize(path)
@@ -541,7 +572,10 @@ mod tests {
             expected_size: Some(current.size),
             expected_revision: Some(expected_revision),
         };
-        assert!(matches!(write_text_file(request), Err(error) if error.code == "conflict"));
+        assert!(matches!(
+            write_text_file(request),
+            Err(error) if error.code == "conflict"
+        ));
         assert_eq!(std::fs::read_to_string(path).unwrap(), "diff");
     }
 
@@ -557,7 +591,10 @@ mod tests {
 
         atomic_write(&path, "after", false, LineEnding::Lf).unwrap();
 
-        assert_eq!(std::fs::metadata(path).unwrap().permissions().mode() & 0o777, 0o640);
+        assert_eq!(
+            std::fs::metadata(path).unwrap().permissions().mode() & 0o777,
+            0o640
+        );
     }
 
     #[cfg(unix)]
@@ -577,6 +614,9 @@ mod tests {
     fn command_errors_are_serialized_with_code_and_message() {
         let serialized = serde_json::to_value(CommandError::from(FileError::Binary)).unwrap();
         assert_eq!(serialized["code"], "binary");
-        assert_eq!(serialized["message"], "This appears to be a binary file and cannot be opened as text.");
+        assert_eq!(
+            serialized["message"],
+            "This appears to be a binary file and cannot be opened as text."
+        );
     }
 }

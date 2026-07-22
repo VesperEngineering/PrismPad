@@ -34,7 +34,14 @@ impl Canvas {
     }
 }
 
-fn fill_rectangle(canvas: &mut Canvas, x: i32, y: i32, width: i32, height: i32, color: Rgba) {
+fn fill_rectangle(
+    canvas: &mut Canvas,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    color: Rgba,
+) {
     for pixel_y in y..y + height {
         for pixel_x in x..x + width {
             canvas.set_pixel(pixel_x, pixel_y, color);
@@ -46,7 +53,13 @@ fn edge(a: (i32, i32), b: (i32, i32), point: (i32, i32)) -> i32 {
     (point.0 - a.0) * (b.1 - a.1) - (point.1 - a.1) * (b.0 - a.0)
 }
 
-fn fill_triangle(canvas: &mut Canvas, a: (i32, i32), b: (i32, i32), c: (i32, i32), color: Rgba) {
+fn fill_triangle(
+    canvas: &mut Canvas,
+    a: (i32, i32),
+    b: (i32, i32),
+    c: (i32, i32),
+    color: Rgba,
+) {
     let min_x = a.0.min(b.0).min(c.0);
     let max_x = a.0.max(b.0).max(c.0);
     let min_y = a.1.min(b.1).min(c.1);
@@ -71,7 +84,9 @@ fn fill_ray(canvas: &mut Canvas, x: i32, y: i32, width: i32, color: Rgba) {
 
 fn generate_icon(manifest_dir: &Path) -> Result<(), Box<dyn Error>> {
     let icon_path = manifest_dir.join("icons").join("icon.png");
-    let icon_dir = icon_path.parent().expect("icon path has a parent directory");
+    let icon_dir = icon_path
+        .parent()
+        .expect("icon path has a parent directory");
     fs::create_dir_all(icon_dir)?;
 
     let mut canvas = Canvas::new([20, 22, 29, 255]);
@@ -80,8 +95,20 @@ fn generate_icon(manifest_dir: &Path) -> Result<(), Box<dyn Error>> {
     fill_ray(&mut canvas, 70, 88, 116, [92, 205, 218, 255]);
     fill_ray(&mut canvas, 70, 168, 116, [184, 165, 230, 255]);
     fill_ray(&mut canvas, 70, 186, 116, [242, 207, 99, 255]);
-    fill_triangle(&mut canvas, (128, 96), (86, 160), (170, 160), [105, 112, 121, 255]);
-    fill_triangle(&mut canvas, (128, 96), (128, 160), (170, 160), [78, 84, 93, 255]);
+    fill_triangle(
+        &mut canvas,
+        (128, 96),
+        (86, 160),
+        (170, 160),
+        [105, 112, 121, 255],
+    );
+    fill_triangle(
+        &mut canvas,
+        (128, 96),
+        (128, 160),
+        (170, 160),
+        [78, 84, 93, 255],
+    );
 
     let file = File::create(&icon_path)?;
     let mut encoder = Encoder::new(BufWriter::new(file), ICON_SIZE, ICON_SIZE);
