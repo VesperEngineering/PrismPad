@@ -109,11 +109,13 @@ fn generate_icon(manifest_dir: &Path) -> Result<(), Box<dyn Error>> {
 
 fn encode_png(canvas: &Canvas) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut png_bytes = Vec::new();
-    let mut encoder = Encoder::new(&mut png_bytes, ICON_SIZE, ICON_SIZE);
-    encoder.set_color(ColorType::Rgba);
-    encoder.set_depth(BitDepth::Eight);
-    let mut writer = encoder.write_header()?;
-    writer.write_image_data(&canvas.pixels)?;
+    {
+        let mut encoder = Encoder::new(&mut png_bytes, ICON_SIZE, ICON_SIZE);
+        encoder.set_color(ColorType::Rgba);
+        encoder.set_depth(BitDepth::Eight);
+        let mut writer = encoder.write_header()?;
+        writer.write_image_data(&canvas.pixels)?;
+    }
     Ok(png_bytes)
 }
 
