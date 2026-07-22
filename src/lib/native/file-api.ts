@@ -1,4 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { ask, open, save } from '@tauri-apps/plugin-dialog';
 import type { DiskMetadata, LineEnding, OpenFilePayload } from '../domain/document';
 
 export type WriteFileRequest = Readonly<{
@@ -8,8 +10,10 @@ export type WriteFileRequest = Readonly<{
   lineEnding: LineEnding;
   expectedModifiedMs: number | null;
   expectedSize: number | null;
-  /** Null is valid only for a target that does not yet exist. */
+  /** Null is valid for a new target or an explicitly confirmed Save As overwrite. */
   expectedRevision: string | null;
+  /** Explicit Save As permission after the native dialog has confirmed an existing target. */
+  overwriteExisting: boolean;
 }>;
 
 export type FileCommandError = Readonly<{
@@ -25,3 +29,33 @@ export async function openFile(path: string, allowLarge = false): Promise<OpenFi
 export async function saveFile(request: WriteFileRequest): Promise<DiskMetadata> {
   return invoke<DiskMetadata>('write_text_file', { request });
 }
+
+export const chooseOpenPaths = async (): Promise<string[]> => {
+  const selected = await open({ directory: false, multiple: true });
+  if (selected === null) {
+    return [];
+  }
+  return Array.isArray(selected) ? selected : [selected];
+};
+
+export const chooseSavePath = (suggestedName: string): Promise<string | null> =>
+  save({ defaultPath: suggestedName });
+
+export const confirmLargeFile = (path: string, size: number): Promise<boolean> =>
+  ask(
+    `${path} is ${(size / (1024 * 1024)).toFixed(1)} MiB. Opening it may disable advanced editor features. Continue?`,
+    { title: 'Open large file', kind: 'warning' }
+  );
+
+export type FileDropSubscription = (paths: readonly string[]) => void | Promise<void>;
+
+export const subscribeToFileDrops = async (onDrop: FileDropSubscription): Promise<() => void> => {
+  if (typeof window === 'undefined' || !('__TAURI_INTERNALS__' in window)) {
+    return () => undefined;
+  }
+  return getCurrentWebview().onDragDropEvent((event) => {
+    if (event.payload.type === 'drop') {
+      void onDrop(event.payload.paths);
+    }
+  });
+};

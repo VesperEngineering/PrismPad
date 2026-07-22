@@ -101,6 +101,8 @@ pub struct WriteFileRequest {
     pub expected_modified_ms: Option<u64>,
     pub expected_size: Option<u64>,
     pub expected_revision: Option<String>,
+    #[serde(default)]
+    pub overwrite_existing: bool,
 }
 
 pub fn parse_text(bytes: &[u8]) -> Result<ParsedText, FileError> {
@@ -144,12 +146,7 @@ pub fn atomic_write(
     line_ending: LineEnding,
 ) -> Result<(), FileError> {
     let expected_target = if path.exists() {
-        let snapshot = snapshot_file(path, true, false)?;
-        ExpectedTarget::Existing {
-            modified_ms: snapshot.metadata.modified_ms,
-            size: snapshot.metadata.size,
-            revision: snapshot.metadata.revision,
-        }
+        ExpectedTarget::Existing(baseline_file(path)?)
     } else {
         ExpectedTarget::Missing
     };
@@ -170,14 +167,17 @@ struct FileSnapshot {
     bytes: Vec<u8>,
 }
 
+#[derive(Debug, Clone)]
+struct FileBaseline {
+    version: FileVersion,
+    revision: String,
+    permissions: fs::Permissions,
+}
+
 #[derive(Debug)]
 enum ExpectedTarget {
     Missing,
-    Existing {
-        modified_ms: u64,
-        size: u64,
-        revision: String,
-    },
+    Existing(FileBaseline),
 }
 
 #[derive(Debug, PartialEq)]
@@ -221,7 +221,7 @@ fn atomic_write_checked(
 
     match expected_target {
         ExpectedTarget::Missing => temporary.persist_noclobber(path).map_err(persist_error)?,
-        ExpectedTarget::Existing { .. } => temporary.persist(path).map_err(persist_error)?,
+        ExpectedTarget::Existing(_) => temporary.persist(path).map_err(persist_error)?,
     };
     // The replacement is committed at this point. A late directory-sync error must
     // not be reported as a failed save; callers may safely retry only failed writes.
@@ -255,15 +255,7 @@ pub fn write_text_file(request: WriteFileRequest) -> Result<DiskMetadata, Comman
 
 fn write_text_file_impl(request: WriteFileRequest) -> Result<DiskMetadata, FileError> {
     let canonical_path = canonical_save_path(Path::new(&request.path))?;
-    let expected_target = if canonical_path.exists() {
-        ExpectedTarget::Existing {
-            modified_ms: request.expected_modified_ms.ok_or(FileError::Conflict)?,
-            size: request.expected_size.ok_or(FileError::Conflict)?,
-            revision: request.expected_revision.ok_or(FileError::Conflict)?,
-        }
-    } else {
-        ExpectedTarget::Missing
-    };
+    let expected_target = expected_target_for_write(&canonical_path, &request)?;
 
     atomic_write_checked(
         &canonical_path,
@@ -273,6 +265,32 @@ fn write_text_file_impl(request: WriteFileRequest) -> Result<DiskMetadata, FileE
         &expected_target,
     )?;
     Ok(snapshot_file(&canonical_path, true, false)?.metadata)
+}
+
+fn expected_target_for_write(
+    path: &Path,
+    request: &WriteFileRequest,
+) -> Result<ExpectedTarget, FileError> {
+    if !path.exists() {
+        return Ok(ExpectedTarget::Missing);
+    }
+
+    let baseline = baseline_file(path)?;
+    match (
+        request.expected_modified_ms,
+        request.expected_size,
+        request.expected_revision.as_deref(),
+    ) {
+        (Some(modified_ms), Some(size), Some(revision))
+            if baseline.version.modified_ms == modified_ms
+                && baseline.version.size == size
+                && baseline.revision == revision =>
+        {
+            Ok(ExpectedTarget::Existing(baseline))
+        }
+        (None, None, None) if request.overwrite_existing => Ok(ExpectedTarget::Existing(baseline)),
+        _ => Err(FileError::Conflict),
+    }
 }
 
 fn canonical_existing_file(path: &Path) -> Result<PathBuf, FileError> {
@@ -309,6 +327,37 @@ fn canonical_save_path(path: &Path) -> Result<PathBuf, FileError> {
 
 fn file_metadata(path: &Path) -> Result<FileVersion, FileError> {
     metadata_version(fs::metadata(path).map_err(io_error)?)
+}
+
+fn baseline_file(path: &Path) -> Result<FileBaseline, FileError> {
+    let mut file = File::open(path).map_err(io_error)?;
+    let before = metadata_version(file.metadata().map_err(io_error)?)?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+
+    loop {
+        let read = file.read(&mut buffer).map_err(io_error)?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+
+    let after_metadata = file.metadata().map_err(io_error)?;
+    let after = metadata_version(after_metadata)?;
+    if before != after {
+        return Err(FileError::Conflict);
+    }
+
+    Ok(FileBaseline {
+        version: after,
+        revision: hasher
+            .finalize()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect(),
+        permissions: file.metadata().map_err(io_error)?.permissions(),
+    })
 }
 
 fn metadata_version(metadata: fs::Metadata) -> Result<FileVersion, FileError> {
@@ -408,21 +457,22 @@ fn verify_expected_target(
                 Ok(None)
             }
         }
-        ExpectedTarget::Existing {
-            modified_ms,
-            size,
-            revision,
-        } => {
-            let snapshot = snapshot_file(path, true, false)?;
-            if snapshot.metadata.modified_ms != *modified_ms
-                || snapshot.metadata.size != *size
-                || snapshot.metadata.revision != *revision
-            {
-                return Err(FileError::Conflict);
-            }
-            Ok(Some(snapshot.permissions))
-        }
+        ExpectedTarget::Existing(baseline) => verify_existing_baseline(path, baseline).map(Some),
     }
+}
+
+fn verify_existing_baseline(
+    path: &Path,
+    baseline: &FileBaseline,
+) -> Result<fs::Permissions, FileError> {
+    if !path.exists() {
+        return Err(FileError::Conflict);
+    }
+    let current = baseline_file(path)?;
+    if current.version != baseline.version || current.revision != baseline.revision {
+        return Err(FileError::Conflict);
+    }
+    Ok(baseline.permissions.clone())
 }
 
 pub fn content_revision(bytes: &[u8]) -> String {
@@ -575,6 +625,7 @@ mod tests {
             expected_modified_ms: Some(current.modified_ms),
             expected_size: Some(current.size),
             expected_revision: Some(expected_revision),
+            overwrite_existing: false,
         };
         assert!(matches!(
             write_text_file(request),
@@ -622,5 +673,78 @@ mod tests {
             serialized["message"],
             "This appears to be a binary file and cannot be opened as text."
         );
+    }
+
+    #[test]
+    fn write_request_defaults_overwrite_permission_to_false() {
+        let request: WriteFileRequest = serde_json::from_value(serde_json::json!({
+            "path": "/tmp/note.txt",
+            "text": "note",
+            "bom": false,
+            "lineEnding": "lf",
+            "expectedModifiedMs": null,
+            "expectedSize": null,
+            "expectedRevision": null
+        }))
+        .unwrap();
+
+        assert!(!request.overwrite_existing);
+    }
+
+    #[test]
+    fn write_allows_explicit_save_as_overwrite_without_prior_target_metadata() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("existing.txt");
+        std::fs::write(&path, "before").unwrap();
+
+        let result = write_text_file(WriteFileRequest {
+            path: path.to_string_lossy().into_owned(),
+            text: "after".to_owned(),
+            bom: false,
+            line_ending: LineEnding::Lf,
+            expected_modified_ms: None,
+            expected_size: None,
+            expected_revision: None,
+            overwrite_existing: true,
+        });
+
+        assert!(result.is_ok());
+        assert_eq!(std::fs::read_to_string(path).unwrap(), "after");
+    }
+
+    #[test]
+    fn write_rejects_existing_save_as_target_without_explicit_overwrite() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("existing.txt");
+        std::fs::write(&path, "before").unwrap();
+
+        assert!(matches!(
+            write_text_file(WriteFileRequest {
+                path: path.to_string_lossy().into_owned(),
+                text: "after".to_owned(),
+                bom: false,
+                line_ending: LineEnding::Lf,
+                expected_modified_ms: None,
+                expected_size: None,
+                expected_revision: None,
+                overwrite_existing: false,
+            }),
+            Err(error) if error.code == "conflict"
+        ));
+        assert_eq!(std::fs::read_to_string(path).unwrap(), "before");
+    }
+
+    #[test]
+    fn revalidation_rejects_a_target_changed_after_the_streaming_baseline() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("existing.txt");
+        std::fs::write(&path, "before").unwrap();
+        let baseline = baseline_file(&path).unwrap();
+        std::fs::write(&path, "after!").unwrap();
+
+        assert!(matches!(
+            verify_existing_baseline(&path, &baseline),
+            Err(FileError::Conflict)
+        ));
     }
 }

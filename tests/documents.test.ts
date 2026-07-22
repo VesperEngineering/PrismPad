@@ -23,7 +23,7 @@ it('retains the opaque native revision when opening and saving a document', () =
     modifiedMs: 2,
     size: 5,
     revision: 'saved-revision'
-  });
+  }, '# A\n');
 
   expect(store.get(id)).toMatchObject({ revision: 'saved-revision' });
 });
@@ -40,7 +40,7 @@ it('creates, edits, and saves an untitled document without losing identity', () 
     dirty: true
   });
 
-  store.markSaved(id, { path: '/tmp/hello.py', modifiedMs: 10, size: 12, revision: 'hello-revision' });
+  store.markSaved(id, { path: '/tmp/hello.py', modifiedMs: 10, size: 12, revision: 'hello-revision' }, 'print("hi")\n');
   expect(store.get(id)).toMatchObject({
     id,
     title: 'hello.py',
@@ -166,7 +166,7 @@ it('merges a save-as target with its existing normalized-path document', () => {
     modifiedMs: 10,
     size: 16,
     revision: 'merged-revision'
-  });
+  }, 'print("merged")\n');
 
   expect(store.snapshot()).toMatchObject({
     activeId: source,
@@ -233,7 +233,7 @@ it('retains dirty target edits as the active untitled recovery document after a 
     modifiedMs: 10,
     size: 15,
     revision: 'saved-revision'
-  });
+  }, 'print("saved")\n');
 
   expect(store.snapshot().activeId).toBe(target);
   expect(store.get(source)).toMatchObject({
@@ -281,7 +281,7 @@ it('reserves the saved title when allocating a dirty collision recovery title', 
     modifiedMs: 10,
     size: 12,
     revision: 'saved-revision'
-  });
+  }, 'source save\n');
 
   expect(store.get(source)?.title).toBe('Untitled');
   expect(store.get(target)).toMatchObject({ path: null, title: 'Untitled 2', dirty: true });

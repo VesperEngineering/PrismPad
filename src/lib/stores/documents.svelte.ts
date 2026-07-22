@@ -203,7 +203,7 @@ export const createDocumentStore = (
       replace(id, (document) => ({ ...document, anchor, head }));
     },
 
-    markSaved: (id: string, metadata: DiskMetadata): void => {
+    markSaved: (id: string, metadata: DiskMetadata, writtenText: string): void => {
       const sourceIndex = indexFor(id);
       if (sourceIndex === -1) {
         return;
@@ -218,8 +218,8 @@ export const createDocumentStore = (
         modifiedMs: metadata.modifiedMs,
         size: metadata.size,
         revision: metadata.revision,
-        savedText: source.text,
-        dirty: false
+        savedText: writtenText,
+        dirty: source.text !== writtenText
       };
       const duplicateIndex = indexForPath(metadata.path, id);
       const displaced = duplicateIndex === -1 ? undefined : documents[duplicateIndex];

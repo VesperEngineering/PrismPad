@@ -50,7 +50,7 @@ export type DocumentStore = Readonly<{
   openPath(payload: OpenFilePayload): string;
   applyEdit(id: string, text: string): void;
   setSelection(id: string, anchor: number, head: number): void;
-  markSaved(id: string, metadata: DiskMetadata): void;
+  markSaved(id: string, metadata: DiskMetadata, writtenText: string): void;
   activate(id: string): void;
   reorder(sourceId: string, targetId: string): void;
   remove(id: string): void;
