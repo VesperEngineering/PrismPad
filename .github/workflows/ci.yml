@@ -59,15 +59,19 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
       - name: Lint locked Rust targets
-        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
       - name: Run locked Rust tests
-        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml --all-features
       - name: Build production frontend
         run: npm run build
       - name: Audit offline boundary
         run: npm run audit:offline
-      - name: Build exact release-profile application for WebDriver
+      - name: Build exact release-profile application for WebDriver (Ubuntu)
+        if: runner.os == 'Linux'
         run: npm run tauri build -- --no-bundle
+      - name: Build exact release-profile application for WebDriver (Windows)
+        if: runner.os == 'Windows'
+        run: npm run tauri build -- --no-bundle --features e2e-automation
       - name: Packaged Tauri E2E and performance sessions (Ubuntu)
         if: runner.os == 'Linux'
         shell: bash
@@ -119,14 +123,11 @@ jobs:
         env:
           PRISMPAD_E2E_APP: ${{ matrix.executable }}
           PRISMPAD_E2E_DEBUGGER_ADDRESS: '127.0.0.1:9222'
+          PRISMPAD_E2E_WEBVIEW_AUTOMATION: '1'
           TAURI_DRIVER_PORT: '4444'
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
           Remove-Item artifacts/launch-ms.txt -ErrorAction SilentlyContinue
-          $webviewPolicy = 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
-          $existingPolicy = Get-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction SilentlyContinue
-          $hadExistingPolicy = $null -ne $existingPolicy
-          $previousPolicyValue = if ($hadExistingPolicy) { $existingPolicy.'prism-pad.exe' } else { $null }
           $driver = $null
           $script:app = $null
           $succeeded = $false
@@ -191,8 +192,6 @@ jobs:
           }
 
           try {
-            New-Item $webviewPolicy -Force | Out-Null
-            New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value '--remote-debugging-port=9222' -PropertyType String -Force | Out-Null
             $driver = Start-Process msedgedriver -ArgumentList '--port=4444', '--host=127.0.0.1', '--verbose', '--log-path=artifacts/msedgedriver.log' -PassThru -RedirectStandardOutput artifacts/tauri-driver.log -RedirectStandardError artifacts/tauri-driver.err.log
             Wait-ForEndpoint 'http://127.0.0.1:4444/status' 'Microsoft Edge WebDriver did not become ready'
             Invoke-PackagedSpec 'e2e/startup.e2e.ts' 'packaged startup E2E failed'
@@ -228,16 +227,6 @@ jobs:
             $cleanupFailure = $null
             try { Stop-PrismPad } catch { $cleanupFailure = $_; Write-Warning $_ }
             if ($driver) { Stop-Process -Id $driver.Id -Force -ErrorAction SilentlyContinue }
-            try {
-              if ($hadExistingPolicy) {
-                New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value $previousPolicyValue -PropertyType String -Force -ErrorAction Stop | Out-Null
-              } else {
-                Remove-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction Stop
-              }
-            } catch {
-              if (!$cleanupFailure) { $cleanupFailure = $_ }
-              Write-Warning $_
-            }
             if ($cleanupFailure -and $succeeded) { throw $cleanupFailure }
           }
       - name: Build release bundles

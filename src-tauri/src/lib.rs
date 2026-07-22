@@ -27,6 +27,24 @@ fn is_stable_command_id(id: &str) -> bool {
     STABLE_COMMAND_IDS.contains(&id)
 }
 
+#[cfg(all(
+    feature = "e2e-automation",
+    any(test, target_os = "windows")
+))]
+const E2E_WEBVIEW_ARGUMENTS: &str = concat!(
+    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection",
+    " --remote-debugging-port=9222"
+);
+
+#[cfg(all(
+    feature = "e2e-automation",
+    any(test, target_os = "windows")
+))]
+fn e2e_webview_arguments(environment_value: Option<&std::ffi::OsStr>) -> Option<String> {
+    (environment_value == Some(std::ffi::OsStr::new("1")))
+        .then(|| E2E_WEBVIEW_ARGUMENTS.to_owned())
+}
+
 struct MenuAvailabilityState {
     items: Mutex<HashMap<String, MenuItem<tauri::Wry>>>,
 }
@@ -122,6 +140,25 @@ mod watch_tests {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
+    #[cfg(all(target_os = "windows", feature = "e2e-automation"))]
+    let context = {
+        let mut context = context;
+        if let Some(arguments) =
+            e2e_webview_arguments(std::env::var_os("PRISMPAD_E2E_WEBVIEW_AUTOMATION").as_deref())
+        {
+            context
+                .config_mut()
+                .app
+                .windows
+                .iter_mut()
+                .find(|window| window.label == "main")
+                .expect("PrismPad main window configuration is unavailable")
+                .additional_browser_args = Some(arguments);
+        }
+        context
+    };
+
     tauri::Builder::default()
         .setup(|app| {
             let new_document =
@@ -239,7 +276,7 @@ pub fn run() {
             watch::unwatch_path,
             update_menu_availability
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("PrismPad failed to start");
 }
 
@@ -254,5 +291,29 @@ mod menu_tests {
         assert!(is_stable_command_id("view.markdownPreview"));
         assert!(!is_stable_command_id("view.workspace"));
         assert!(!is_stable_command_id("help.about"));
+    }
+}
+
+#[cfg(all(test, feature = "e2e-automation"))]
+mod e2e_automation_tests {
+    use super::{e2e_webview_arguments, E2E_WEBVIEW_ARGUMENTS};
+    use std::ffi::OsStr;
+
+    #[test]
+    fn enables_only_the_exact_automation_sentinel() {
+        assert_eq!(
+            e2e_webview_arguments(Some(OsStr::new("1"))).as_deref(),
+            Some(E2E_WEBVIEW_ARGUMENTS)
+        );
+        assert_eq!(e2e_webview_arguments(None), None);
+        assert_eq!(e2e_webview_arguments(Some(OsStr::new("true"))), None);
+        assert_eq!(e2e_webview_arguments(Some(OsStr::new("anything else"))), None);
+    }
+
+    #[test]
+    fn retains_wrys_security_defaults_when_enabling_webdriver() {
+        assert!(E2E_WEBVIEW_ARGUMENTS
+            .starts_with("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection "));
+        assert!(E2E_WEBVIEW_ARGUMENTS.ends_with("--remote-debugging-port=9222"));
     }
 }

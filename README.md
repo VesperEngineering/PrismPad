@@ -57,7 +57,7 @@ cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D w
 cargo test --locked --manifest-path src-tauri/Cargo.toml
 ```
 
-The packaged WebView suite drives the real Tauri webview, not a browser stand-in. First create the release-profile executable without an installer:
+The packaged WebView suite drives the real Tauri webview, not a browser stand-in. On Ubuntu, first create the release-profile executable without an installer:
 
 ```sh
 npm run tauri build -- --no-bundle
@@ -65,7 +65,13 @@ npm run tauri build -- --no-bundle
 
 On Ubuntu, install `tauri-driver` with `cargo install tauri-driver --version 2.0.6 --locked`, start `xvfb-run -a tauri-driver --port 4444` in one terminal, then run `PRISMPAD_E2E_APP=src-tauri/target/release/prism-pad npm run test:e2e` in another. The executable is supplied through the required `tauri:options` capability; it is not a positional `tauri-driver` argument.
 
-Windows uses Microsoft’s documented attach flow. Install the reviewed matching-driver helper, run it, and put the resulting `msedgedriver.exe` on `PATH`:
+Windows uses Microsoft’s documented attach flow. Build the test executable with PrismPad's compile-time-scoped automation feature; normal builds and installers omit this hook:
+
+```powershell
+npm run tauri build -- --no-bundle --features e2e-automation
+```
+
+Install the reviewed matching-driver helper, run it, and put the resulting `msedgedriver.exe` on `PATH`:
 
 ```powershell
 cargo install --git https://github.com/chippers/msedgedriver-tool --rev 8c4b34f51b45f5cf08013366d703de464ab871d1 --locked
@@ -77,15 +83,10 @@ Start `msedgedriver --port=4444 --host=127.0.0.1` in one PowerShell terminal. In
 ```powershell
 $env:PRISMPAD_E2E_APP='src-tauri/target/release/prism-pad.exe'
 $env:PRISMPAD_E2E_DEBUGGER_ADDRESS='127.0.0.1:9222'
-$webviewPolicy = 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
-$existingPolicy = Get-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction SilentlyContinue
-$hadExistingPolicy = $null -ne $existingPolicy
-$previousPolicyValue = if ($hadExistingPolicy) { $existingPolicy.'prism-pad.exe' } else { $null }
+$env:PRISMPAD_E2E_WEBVIEW_AUTOMATION='1'
 $app = $null
 $ready = $false
 try {
-  New-Item $webviewPolicy -Force | Out-Null
-  New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value '--remote-debugging-port=9222' -PropertyType String -Force | Out-Null
   $app = Start-Process $env:PRISMPAD_E2E_APP -PassThru
   for ($attempt = 0; $attempt -lt 30 -and !$ready; $attempt++) {
     try { Invoke-WebRequest 'http://127.0.0.1:9222/json/version' -UseBasicParsing | Out-Null; $ready = $true }
@@ -95,11 +96,7 @@ try {
   npm run test:e2e -- --spec e2e/startup.e2e.ts
 } finally {
   if ($app) { Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue }
-  if ($hadExistingPolicy) {
-    New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value $previousPolicyValue -PropertyType String -Force -ErrorAction Stop | Out-Null
-  } else {
-    Remove-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction Stop
-  }
+  Remove-Item Env:PRISMPAD_E2E_WEBVIEW_AUTOMATION -ErrorAction SilentlyContinue
 }
 ```
 

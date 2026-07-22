@@ -12,6 +12,8 @@ const documentWorkflow = readNormalized('e2e/file-workflow.e2e.ts');
 const nativeFiles = readNormalized('src-tauri/src/files.rs');
 const nativeFilesWithWindowsNewlines = nativeFiles.replace(/\n/g, '\r\n');
 const nativeWatch = readNormalized('src-tauri/src/watch.rs');
+const nativeLib = readNormalized('src-tauri/src/lib.rs');
+const nativeManifest = readNormalized('src-tauri/Cargo.toml');
 const documentActions = readNormalized('tests/document-actions.test.ts');
 const externalChanges = readNormalized('tests/external-changes.test.ts');
 
@@ -54,22 +56,28 @@ describe('release engineering configuration', () => {
 
   it('attaches Windows EdgeDriver only after the packaged WebView2 endpoint is ready', () => {
     expect(workflow).toContain("PRISMPAD_E2E_DEBUGGER_ADDRESS: '127.0.0.1:9222'");
+    expect(workflow).toContain("PRISMPAD_E2E_WEBVIEW_AUTOMATION: '1'");
     expect(workflow).toContain("Start-Process msedgedriver");
-    expect(workflow).toContain("New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value '--remote-debugging-port=9222'");
-    expect(workflow).toContain("Remove-ItemProperty $webviewPolicy -Name 'prism-pad.exe'");
-    expect(workflow).toContain('$hadExistingPolicy');
-    expect(workflow).toContain('$previousPolicyValue');
-    expect(workflow).toContain("Remove-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction Stop");
+    expect(workflow).toContain('npm run tauri build -- --no-bundle --features e2e-automation');
+    expect(workflow).not.toContain('AdditionalBrowserArguments');
+    expect(workflow).not.toContain('$webviewPolicy');
     expect(workflow).toContain("Wait-ForEndpoint 'http://127.0.0.1:9222/json/version'");
     expect(workflow).toContain("Wait-ForEndpointToClose 'http://127.0.0.1:9222/json/version'");
     expect(workflow).toContain("'packaged WebView2 debugging endpoint did not become ready'");
-    expect(readme).toContain("New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value '--remote-debugging-port=9222'");
+    expect(nativeManifest).toContain('e2e-automation = []');
+    expect(nativeLib).toContain('PRISMPAD_E2E_WEBVIEW_AUTOMATION');
+    expect(nativeLib).toContain('--remote-debugging-port=9222');
+    expect(nativeLib).toContain('--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection');
+    expect(nativeLib).toContain('#[cfg(all(target_os = "windows", feature = "e2e-automation"))]');
+    expect(readme).toContain('npm run tauri build -- --no-bundle --features e2e-automation');
+    expect(readme).toContain("$env:PRISMPAD_E2E_WEBVIEW_AUTOMATION='1'");
     expect(readme).toContain("$env:PRISMPAD_E2E_DEBUGGER_ADDRESS='127.0.0.1:9222'");
     expect(readme).toContain('msedgedriver --port=4444 --host=127.0.0.1');
     expect(readme).toContain('$ready = $false');
     expect(readme).toContain('for ($attempt = 0; $attempt -lt 30 -and !$ready; $attempt++)');
-    expect(readme).toContain('$hadExistingPolicy');
-    expect(readme).toContain("Remove-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction Stop");
+    expect(readme).not.toContain('AdditionalBrowserArguments');
+    expect(readme).not.toContain('$webviewPolicy');
+    expect(readme).toContain('Remove-Item Env:PRISMPAD_E2E_WEBVIEW_AUTOMATION -ErrorAction SilentlyContinue');
     expect(readme).toMatch(/try \{[\s\S]*npm run test:e2e[\s\S]*finally \{\s+if \(\$app\) \{ Stop-Process/);
   });
 
