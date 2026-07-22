@@ -120,11 +120,16 @@ jobs:
           PRISMPAD_E2E_APP: ${{ matrix.executable }}
           PRISMPAD_E2E_DEBUGGER_ADDRESS: '127.0.0.1:9222'
           TAURI_DRIVER_PORT: '4444'
-          WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222'
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
           Remove-Item artifacts/launch-ms.txt -ErrorAction SilentlyContinue
-          $driver = Start-Process msedgedriver -ArgumentList '--port=4444', '--host=127.0.0.1', '--verbose', '--log-path=artifacts/msedgedriver.log' -PassThru -RedirectStandardOutput artifacts/tauri-driver.log -RedirectStandardError artifacts/tauri-driver.err.log
+          $webviewPolicy = 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+          $existingPolicy = Get-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction SilentlyContinue
+          $hadExistingPolicy = $null -ne $existingPolicy
+          $previousPolicyValue = if ($hadExistingPolicy) { $existingPolicy.'prism-pad.exe' } else { $null }
+          $driver = $null
+          $script:app = $null
+          $succeeded = $false
 
           function Wait-ForEndpoint([string]$Uri, [string]$Failure) {
             for ($attempt = 0; $attempt -lt 30; $attempt++) {
@@ -155,6 +160,12 @@ jobs:
             try {
               Wait-ForEndpoint 'http://127.0.0.1:9222/json/version' 'packaged WebView2 debugging endpoint did not become ready'
             } catch {
+              if ($script:app.HasExited) {
+                Write-Host "PrismPad exited before WebView2 readiness with code $($script:app.ExitCode)"
+              } else {
+                Write-Host "PrismPad remained alive without a WebView2 debugging endpoint (PID $($script:app.Id))"
+              }
+              Get-CimInstance Win32_Process | Where-Object Name -In 'prism-pad.exe', 'msedgewebview2.exe' | Select-Object ProcessId, Name, CommandLine | Format-List
               Stop-Process -Id $script:app.Id -Force -ErrorAction SilentlyContinue
               throw
             }
@@ -180,6 +191,9 @@ jobs:
           }
 
           try {
+            New-Item $webviewPolicy -Force | Out-Null
+            New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value '--remote-debugging-port=9222' -PropertyType String -Force | Out-Null
+            $driver = Start-Process msedgedriver -ArgumentList '--port=4444', '--host=127.0.0.1', '--verbose', '--log-path=artifacts/msedgedriver.log' -PassThru -RedirectStandardOutput artifacts/tauri-driver.log -RedirectStandardError artifacts/tauri-driver.err.log
             Wait-ForEndpoint 'http://127.0.0.1:4444/status' 'Microsoft Edge WebDriver did not become ready'
             Invoke-PackagedSpec 'e2e/startup.e2e.ts' 'packaged startup E2E failed'
             Invoke-PackagedSpec 'e2e/file-workflow.e2e.ts' 'packaged file workflow E2E failed'
@@ -204,14 +218,27 @@ jobs:
             Set-Content artifacts/idle-rss-kb.txt ([math]::Round($script:app.WorkingSet64 / 1KB))
             $idle.WaitForExit()
             if ($idle.ExitCode -ne 0) { throw 'idle measurement session failed' }
+            $succeeded = $true
           } catch {
             Get-Content artifacts/msedgedriver.log -ErrorAction SilentlyContinue
             Get-Content artifacts/tauri-driver.log -ErrorAction SilentlyContinue
             Get-Content artifacts/tauri-driver.err.log -ErrorAction SilentlyContinue
             throw
           } finally {
-            Stop-PrismPad
-            Stop-Process -Id $driver.Id -Force -ErrorAction SilentlyContinue
+            $cleanupFailure = $null
+            try { Stop-PrismPad } catch { $cleanupFailure = $_; Write-Warning $_ }
+            if ($driver) { Stop-Process -Id $driver.Id -Force -ErrorAction SilentlyContinue }
+            try {
+              if ($hadExistingPolicy) {
+                New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value $previousPolicyValue -PropertyType String -Force -ErrorAction Stop | Out-Null
+              } else {
+                Remove-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction Stop
+              }
+            } catch {
+              if (!$cleanupFailure) { $cleanupFailure = $_ }
+              Write-Warning $_
+            }
+            if ($cleanupFailure -and $succeeded) { throw $cleanupFailure }
           }
       - name: Build release bundles
         run: npm run tauri build -- --bundles ${{ matrix.bundle }}

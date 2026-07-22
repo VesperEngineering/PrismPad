@@ -53,17 +53,24 @@ describe('release engineering configuration', () => {
   });
 
   it('attaches Windows EdgeDriver only after the packaged WebView2 endpoint is ready', () => {
-    expect(workflow).toContain("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222'");
     expect(workflow).toContain("PRISMPAD_E2E_DEBUGGER_ADDRESS: '127.0.0.1:9222'");
     expect(workflow).toContain("Start-Process msedgedriver");
+    expect(workflow).toContain("New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value '--remote-debugging-port=9222'");
+    expect(workflow).toContain("Remove-ItemProperty $webviewPolicy -Name 'prism-pad.exe'");
+    expect(workflow).toContain('$hadExistingPolicy');
+    expect(workflow).toContain('$previousPolicyValue');
+    expect(workflow).toContain("Remove-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction Stop");
     expect(workflow).toContain("Wait-ForEndpoint 'http://127.0.0.1:9222/json/version'");
     expect(workflow).toContain("Wait-ForEndpointToClose 'http://127.0.0.1:9222/json/version'");
     expect(workflow).toContain("'packaged WebView2 debugging endpoint did not become ready'");
-    expect(readme).toContain("$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS='--remote-debugging-port=9222'");
+    expect(readme).toContain("New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value '--remote-debugging-port=9222'");
     expect(readme).toContain("$env:PRISMPAD_E2E_DEBUGGER_ADDRESS='127.0.0.1:9222'");
     expect(readme).toContain('msedgedriver --port=4444 --host=127.0.0.1');
     expect(readme).toContain('$ready = $false');
-    expect(readme).toMatch(/try \{\s+npm run test:e2e[\s\S]*finally \{\s+Stop-Process/);
+    expect(readme).toContain('for ($attempt = 0; $attempt -lt 30 -and !$ready; $attempt++)');
+    expect(readme).toContain('$hadExistingPolicy');
+    expect(readme).toContain("Remove-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction Stop");
+    expect(readme).toMatch(/try \{[\s\S]*npm run test:e2e[\s\S]*finally \{\s+if \(\$app\) \{ Stop-Process/);
   });
 
   it('uses independent Windows-sensitive commands and audits native capabilities', () => {

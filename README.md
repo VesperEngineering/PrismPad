@@ -77,17 +77,29 @@ Start `msedgedriver --port=4444 --host=127.0.0.1` in one PowerShell terminal. In
 ```powershell
 $env:PRISMPAD_E2E_APP='src-tauri/target/release/prism-pad.exe'
 $env:PRISMPAD_E2E_DEBUGGER_ADDRESS='127.0.0.1:9222'
-$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS='--remote-debugging-port=9222'
-$app = Start-Process $env:PRISMPAD_E2E_APP -PassThru
+$webviewPolicy = 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+$existingPolicy = Get-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction SilentlyContinue
+$hadExistingPolicy = $null -ne $existingPolicy
+$previousPolicyValue = if ($hadExistingPolicy) { $existingPolicy.'prism-pad.exe' } else { $null }
+$app = $null
 $ready = $false
-do {
-  try { Invoke-WebRequest 'http://127.0.0.1:9222/json/version' -UseBasicParsing | Out-Null; $ready = $true }
-  catch { Start-Sleep -Seconds 1 }
-} until ($ready)
 try {
+  New-Item $webviewPolicy -Force | Out-Null
+  New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value '--remote-debugging-port=9222' -PropertyType String -Force | Out-Null
+  $app = Start-Process $env:PRISMPAD_E2E_APP -PassThru
+  for ($attempt = 0; $attempt -lt 30 -and !$ready; $attempt++) {
+    try { Invoke-WebRequest 'http://127.0.0.1:9222/json/version' -UseBasicParsing | Out-Null; $ready = $true }
+    catch { Start-Sleep -Seconds 1 }
+  }
+  if (!$ready) { throw 'packaged WebView2 debugging endpoint did not become ready' }
   npm run test:e2e -- --spec e2e/startup.e2e.ts
 } finally {
-  Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+  if ($app) { Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue }
+  if ($hadExistingPolicy) {
+    New-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -Value $previousPolicyValue -PropertyType String -Force -ErrorAction Stop | Out-Null
+  } else {
+    Remove-ItemProperty $webviewPolicy -Name 'prism-pad.exe' -ErrorAction Stop
+  }
 }
 ```
 
