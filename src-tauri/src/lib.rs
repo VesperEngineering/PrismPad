@@ -27,22 +27,15 @@ fn is_stable_command_id(id: &str) -> bool {
     STABLE_COMMAND_IDS.contains(&id)
 }
 
-#[cfg(all(
-    feature = "e2e-automation",
-    any(test, target_os = "windows")
-))]
+#[cfg(all(feature = "e2e-automation", any(test, target_os = "windows")))]
 const E2E_WEBVIEW_ARGUMENTS: &str = concat!(
     "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection",
     " --remote-debugging-port=9222"
 );
 
-#[cfg(all(
-    feature = "e2e-automation",
-    any(test, target_os = "windows")
-))]
+#[cfg(all(feature = "e2e-automation", any(test, target_os = "windows")))]
 fn e2e_webview_arguments(environment_value: Option<&std::ffi::OsStr>) -> Option<String> {
-    (environment_value == Some(std::ffi::OsStr::new("1")))
-        .then(|| E2E_WEBVIEW_ARGUMENTS.to_owned())
+    (environment_value == Some(std::ffi::OsStr::new("1"))).then(|| E2E_WEBVIEW_ARGUMENTS.to_owned())
 }
 
 struct MenuAvailabilityState {
@@ -307,7 +300,10 @@ mod e2e_automation_tests {
         );
         assert_eq!(e2e_webview_arguments(None), None);
         assert_eq!(e2e_webview_arguments(Some(OsStr::new("true"))), None);
-        assert_eq!(e2e_webview_arguments(Some(OsStr::new("anything else"))), None);
+        assert_eq!(
+            e2e_webview_arguments(Some(OsStr::new("anything else"))),
+            None
+        );
     }
 
     #[test]
