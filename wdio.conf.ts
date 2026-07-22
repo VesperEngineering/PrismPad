@@ -5,6 +5,7 @@ declare global {
         application: string;
       };
       'ms:edgeOptions'?: { debuggerAddress: string };
+      'wdio:enforceWebDriverClassic'?: boolean;
     }
   }
 }
@@ -18,7 +19,8 @@ const debuggerAddress = process.env.PRISMPAD_E2E_DEBUGGER_ADDRESS;
 const capabilities: WebdriverIO.Capabilities[] = debuggerAddress
   ? [{
       browserName: 'webview2',
-      'ms:edgeOptions': { debuggerAddress }
+      'ms:edgeOptions': { debuggerAddress },
+      'wdio:enforceWebDriverClassic': true
     }]
   : [{
       'tauri:options': { application: applicationPath }
@@ -27,6 +29,8 @@ const capabilities: WebdriverIO.Capabilities[] = debuggerAddress
 /**
  * Linux passes the release binary through tauri-driver. Windows launches that
  * same binary first and attaches EdgeDriver to its ready WebView2 endpoint.
+ * Windows stays on classic WebDriver so EdgeDriver does not select the BiDi
+ * mapper's about:blank target instead of PrismPad's Tauri document.
  * Both paths exercise the actual packaged webview rather than a browser stand-in.
  */
 export const config: WebdriverIO.Config = {

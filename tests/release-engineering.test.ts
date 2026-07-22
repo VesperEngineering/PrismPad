@@ -29,6 +29,7 @@ describe('release engineering configuration', () => {
     expect(wdio).toContain('PRISMPAD_E2E_APP');
     expect(wdio).toContain('PRISMPAD_E2E_DEBUGGER_ADDRESS');
     expect(wdio).toContain("'ms:edgeOptions': { debuggerAddress }");
+    expect(wdio).toContain("'wdio:enforceWebDriverClassic': true");
     expect(packageJson.scripts['check:e2e']).toBe('tsc --noEmit --project tsconfig.e2e.json');
     expect(packageJson.devDependencies).toMatchObject({
       '@types/node': '20.19.43',
