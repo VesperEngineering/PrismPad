@@ -9,6 +9,7 @@ it('defines only stable application command ids in native menus', () => {
   expect(source).toContain('prismpad://command');
   expect(source).toContain('for (id, item) in [');
   expect(source).not.toContain('item.id().to_string()');
-  expect(source).toContain('create_dir(&detour)');
-  expect(source).toContain('.join("..")');
+  expect(source).toContain('NamedTempFile::new_in(&canonical_current_dir)');
+  expect(source).toContain('strip_prefix(&canonical_current_dir)');
+  expect(source).not.toContain('create_dir(&detour)');
 });

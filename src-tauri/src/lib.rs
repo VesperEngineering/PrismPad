@@ -73,22 +73,23 @@ mod watch_tests {
 
     #[test]
     fn accepts_only_already_canonical_paths() {
-        let temporary = tempfile::tempdir().expect("temporary directory");
-        let file = temporary.path().join("note.txt");
-        std::fs::write(&file, "note").expect("write test file");
-        let canonical = std::fs::canonicalize(&file).expect("canonical file path");
+        let current_dir = std::env::current_dir().expect("current directory");
+        let canonical_current_dir =
+            std::fs::canonicalize(current_dir).expect("canonical current directory");
+        let temporary =
+            tempfile::NamedTempFile::new_in(&canonical_current_dir).expect("temporary file");
+        let canonical =
+            std::fs::canonicalize(temporary.path()).expect("canonical temporary file path");
 
         assert_eq!(
             require_canonical_path(&canonical).expect("canonical path"),
             canonical
         );
-        let parent = canonical.parent().expect("file parent");
-        let detour = parent.join("detour");
-        std::fs::create_dir(&detour).expect("create detour directory");
-        let noncanonical = detour
-            .join("..")
-            .join(canonical.file_name().expect("file name"));
-        assert!(require_canonical_path(&noncanonical).is_err());
+        let relative = canonical
+            .strip_prefix(&canonical_current_dir)
+            .expect("relative temporary file path");
+        assert!(relative.is_relative());
+        assert!(require_canonical_path(relative).is_err());
     }
 
     #[test]
