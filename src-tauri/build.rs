@@ -114,6 +114,7 @@ fn encode_png(canvas: &Canvas) -> Result<Vec<u8>, Box<dyn Error>> {
     encoder.set_depth(BitDepth::Eight);
     let mut writer = encoder.write_header()?;
     writer.write_image_data(&canvas.pixels)?;
+    drop(writer);
     Ok(png_bytes)
 }
 
