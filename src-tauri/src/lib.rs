@@ -82,10 +82,11 @@ mod watch_tests {
             require_canonical_path(&canonical).expect("canonical path"),
             canonical
         );
-        let noncanonical = canonical
-            .parent()
-            .expect("file parent")
-            .join(".")
+        let parent = canonical.parent().expect("file parent");
+        let detour = parent.join("detour");
+        std::fs::create_dir(&detour).expect("create detour directory");
+        let noncanonical = detour
+            .join("..")
             .join(canonical.file_name().expect("file name"));
         assert!(require_canonical_path(&noncanonical).is_err());
     }

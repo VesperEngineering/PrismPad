@@ -1,20 +1,23 @@
 import { readFileSync } from 'node:fs';
 
-const wdio = readFileSync('wdio.conf.ts', 'utf8');
 const normalizeNewlines = (source: string): string => source.replace(/\r\n?/g, '\n');
-const workflow = normalizeNewlines(readFileSync('.github/workflows/ci.yml', 'utf8'));
+const readNormalized = (path: string): string => normalizeNewlines(readFileSync(path, 'utf8'));
+const wdio = readNormalized('wdio.conf.ts');
+const workflow = readNormalized('.github/workflows/ci.yml');
 const workflowWithWindowsNewlines = workflow.replace(/\n/g, '\r\n');
 const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
-const startup = readFileSync('e2e/startup.e2e.ts', 'utf8');
-const documentWorkflow = readFileSync('e2e/file-workflow.e2e.ts', 'utf8');
-const nativeFiles = readFileSync('src-tauri/src/files.rs', 'utf8');
-const nativeWatch = readFileSync('src-tauri/src/watch.rs', 'utf8');
-const documentActions = readFileSync('tests/document-actions.test.ts', 'utf8');
-const externalChanges = readFileSync('tests/external-changes.test.ts', 'utf8');
+const startup = readNormalized('e2e/startup.e2e.ts');
+const documentWorkflow = readNormalized('e2e/file-workflow.e2e.ts');
+const nativeFiles = readNormalized('src-tauri/src/files.rs');
+const nativeFilesWithWindowsNewlines = nativeFiles.replace(/\n/g, '\r\n');
+const nativeWatch = readNormalized('src-tauri/src/watch.rs');
+const documentActions = readNormalized('tests/document-actions.test.ts');
+const externalChanges = readNormalized('tests/external-changes.test.ts');
 
 describe('release engineering configuration', () => {
   it('keeps multiline workflow assertions portable across Windows checkouts', () => {
     expect(normalizeNewlines(workflowWithWindowsNewlines)).toContain('- name: Check frontend\n        run: npm run check');
+    expect(normalizeNewlines(nativeFilesWithWindowsNewlines)).toMatch(/#\[cfg\(test\)\]\npub fn atomic_write\(/);
   });
 
   it('passes the release application through the required Tauri capability and typechecks E2E', () => {
