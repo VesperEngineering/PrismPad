@@ -549,13 +549,13 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            result.path,
+            result.metadata.path,
             std::fs::canonicalize(path)
                 .unwrap()
                 .to_string_lossy()
                 .into_owned()
         );
-        assert_eq!(result.revision, content_revision(b"note"));
+        assert_eq!(result.metadata.revision, content_revision(b"note"));
     }
 
     #[test]
