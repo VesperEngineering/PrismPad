@@ -1,7 +1,10 @@
 declare global {
   namespace WebdriverIO {
     interface Capabilities {
-      'tauri:options'?: { application: string };
+      'tauri:options'?: {
+        application: string;
+        webviewOptions?: { additionalBrowserArguments: string[] };
+      };
     }
   }
 }
@@ -24,7 +27,10 @@ export const config: WebdriverIO.Config = {
   specs: ['./e2e/startup.e2e.ts', './e2e/file-workflow.e2e.ts'],
   maxInstances: 1,
   capabilities: [{
-    'tauri:options': { application: applicationPath }
+    'tauri:options': {
+      application: applicationPath,
+      webviewOptions: { additionalBrowserArguments: ['remote-debugging-port=0'] }
+    }
   }],
   logLevel: 'warn',
   bail: 0,

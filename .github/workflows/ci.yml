@@ -66,8 +66,8 @@ jobs:
         run: npm run build
       - name: Audit offline boundary
         run: npm run audit:offline
-      - name: Build instrumented release-profile application for WebDriver
-        run: npm run tauri build -- --no-bundle --features e2e
+      - name: Build exact release-profile application for WebDriver
+        run: npm run tauri build -- --no-bundle
       - name: Packaged Tauri E2E and performance sessions (Ubuntu)
         if: runner.os == 'Linux'
         shell: bash
