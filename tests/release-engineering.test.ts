@@ -30,6 +30,7 @@ describe('release engineering configuration', () => {
       '@wdio/globals': '9.29.1',
       '@wdio/types': '9.29.1'
     });
+    expect(wdio).toContain('connectionRetryTimeout: 120_000');
   });
 
   it('starts tauri-driver without an executable argument and installs native drivers', () => {

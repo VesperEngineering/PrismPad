@@ -29,7 +29,7 @@ export const config: WebdriverIO.Config = {
   logLevel: 'warn',
   bail: 0,
   waitforTimeout: 15_000,
-  connectionRetryTimeout: 30_000,
+  connectionRetryTimeout: 120_000,
   connectionRetryCount: 2,
   framework: 'mocha',
   reporters: ['spec'],
