@@ -6,7 +6,7 @@
 
 **Architecture:** A Tauri 2 Rust shell owns validated filesystem operations, file watching, native dialogs, settings, and packaging. A Svelte 5 TypeScript interface owns presentation and document state, while CodeMirror 6 owns editor state and language support; the boundary is a small typed command adapter rather than broad filesystem permissions.
 
-**Tech Stack:** Rust, Tauri 2, Svelte 5, TypeScript 7, Vite 8, CodeMirror 6, Vitest 4, Testing Library, WebdriverIO 9, npm, GitHub Actions
+**Tech Stack:** Rust, Tauri 2, Svelte 5, TypeScript 6, Vite 8, CodeMirror 6, Vitest 4, Testing Library, WebdriverIO 9, npm, GitHub Actions
 
 ## Global Constraints
 
@@ -149,7 +149,7 @@ it('renders the PrismPad shell without IDE panels', () => {
     "@testing-library/svelte": "5.4.2",
     "jsdom": "29.1.1",
     "svelte-check": "4.7.3",
-    "typescript": "7.0.2",
+    "typescript": "6.0.3",
     "vite": "8.1.5",
     "vitest": "4.1.10"
   }
