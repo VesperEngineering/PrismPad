@@ -1,6 +1,15 @@
-<img width="250" height="250" alt="a466f5b6-fd91-4ba4-84a9-dbaadb85ce62" src="https://github.com/user-attachments/assets/bd014700-9ad0-4e03-8392-dfd7da39d451" />
-
 # PrismPad
+
+<p align="center">
+  <img src="docs/assets/prismpad-icon.png" alt="PrismPad icon" width="220">
+</p>
+
+<p align="center">
+  <a href="https://github.com/VesperEngineering/PrismPad/actions/workflows/ci.yml"><img src="https://github.com/VesperEngineering/PrismPad/actions/workflows/ci.yml/badge.svg?branch=main" alt="Build status"></a>
+  <a href="https://github.com/VesperEngineering/PrismPad/releases/latest"><img src="https://img.shields.io/github/v/release/VesperEngineering/PrismPad?display_name=tag&sort=semver" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows11&logoColor=white" alt="Windows 10 and 11">
+  <img src="https://img.shields.io/badge/Ubuntu-24.04%2B-E95420?logo=ubuntu&logoColor=white" alt="Ubuntu 24.04 or newer">
+</p>
 
 PrismPad is a lightweight, local-first desktop text editor for 64-bit Windows 10/11 and 64-bit Ubuntu 24.04 LTS or newer. It deliberately remains an editor, not an IDE: no autocomplete, language servers, terminal, debugger, code execution, Git integration, extensions, accounts, sync, telemetry, or network service is included.
 
@@ -108,14 +117,15 @@ The WebView suite covers startup, editing, unsaved-tab decisions, Markdown previ
 
 The packaged WebDriver suite cannot safely seed the native plugin store or automate operating-system dialogs, so it does not claim a packaged path-backed restoration scenario. Metadata-only restoration, unreadable-path handling, and native dialog command wiring remain covered by the unit/integration suite. Adding packaged restoration requires a supported native test hook; PrismPad does not add a production fixture mode for this purpose.
 
-## Packaging and CI artifacts
+## Packaging, release downloads, and CI artifacts
 
-Build release bundles with `npm run tauri build`. Installable outputs are written to these concrete locations:
+Build release bundles with `npm run tauri build`. Package outputs are written to these concrete locations:
 
+- Windows portable executable: `src-tauri/target/release/prism-pad.exe` (run it directly).
 - Windows NSIS: `src-tauri/target/release/bundle/nsis/*.exe` (run the installer normally).
 - Ubuntu DEB: `src-tauri/target/release/bundle/deb/*.deb` (install with `sudo apt install ./src-tauri/target/release/bundle/deb/<package>.deb`).
 - Ubuntu AppImage: `src-tauri/target/release/bundle/appimage/*.AppImage` (mark it executable with `chmod +x <file>.AppImage`, then run it).
 
-GitHub Actions uploads those bundles, driver logs, and a required performance report containing five-launch median time-to-welcome, live idle RSS after 30 seconds, and bundle sizes.
+The guarded v0.1.0 release publishes exactly four clearly named downloads: `PrismPad-v0.1.0-windows-x64-portable.exe`, `PrismPad-v0.1.0-windows-x64-setup.exe`, `PrismPad-v0.1.0-linux-x64.AppImage`, and `PrismPad-v0.1.0-ubuntu-24.04-x64.deb`. The portable choices are the Windows executable and Linux AppImage; the NSIS and Debian files are installers.
 
-Version 1 does not sign, notarize, publish, upload updates, create releases, or use signing secrets. Unsigned artifacts are for evaluation and local installation only; distribution and signing require an explicit future release process.
+The separate CI workflow retains validated bundles, driver logs, and a required performance report as temporary workflow artifacts. The public release attaches only the four packages above after Windows and Ubuntu validation succeeds. This release is unsigned; Windows may show a Microsoft Defender SmartScreen warning. Code signing requires a future Vesper Applied LLC Authenticode certificate and protected signing configuration.
