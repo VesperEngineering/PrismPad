@@ -1,3 +1,5 @@
+<img width="1254" height="1254" alt="a466f5b6-fd91-4ba4-84a9-dbaadb85ce62" src="https://github.com/user-attachments/assets/bd014700-9ad0-4e03-8392-dfd7da39d451" />
+
 # PrismPad
 
 PrismPad is a lightweight, local-first desktop text editor for 64-bit Windows 10/11 and 64-bit Ubuntu 24.04 LTS or newer. It deliberately remains an editor, not an IDE: no autocomplete, language servers, terminal, debugger, code execution, Git integration, extensions, accounts, sync, telemetry, or network service is included.
