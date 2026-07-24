@@ -1,4 +1,4 @@
-<img width="1254" height="1254" alt="a466f5b6-fd91-4ba4-84a9-dbaadb85ce62" src="https://github.com/user-attachments/assets/bd014700-9ad0-4e03-8392-dfd7da39d451" />
+<img width="500" height="500" alt="a466f5b6-fd91-4ba4-84a9-dbaadb85ce62" src="https://github.com/user-attachments/assets/bd014700-9ad0-4e03-8392-dfd7da39d451" />
 
 # PrismPad
 
