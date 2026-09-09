@@ -33,8 +33,8 @@ describe('release engineering configuration', () => {
     expect(packageJson.scripts['check:e2e']).toBe('tsc --noEmit --project tsconfig.e2e.json');
     expect(packageJson.devDependencies).toMatchObject({
       '@types/node': '20.19.43',
-      '@wdio/globals': '9.29.1',
-      '@wdio/types': '9.29.1'
+      '@wdio/globals': '9.31.3',
+      '@wdio/types': '9.31.2'
     });
     expect(wdio).toContain('connectionRetryTimeout: 120_000');
   });

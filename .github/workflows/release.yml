@@ -22,8 +22,8 @@ permissions:
   contents: read
 
 env:
-  VERSION: 0.1.0
-  TAG: v0.1.0
+  VERSION: 0.1.1
+  TAG: v0.1.1
 
 jobs:
   build-packages:
@@ -37,11 +37,11 @@ jobs:
           - name: Ubuntu 24.04
             os: ubuntu-24.04
             bundle: deb,appimage
-            artifact: prismpad-ubuntu-v0.1.0
+            artifact: prismpad-ubuntu-v0.1.1
           - name: Windows
             os: windows-latest
             bundle: nsis
-            artifact: prismpad-windows-v0.1.0
+            artifact: prismpad-windows-v0.1.1
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -176,8 +176,8 @@ jobs:
           test -s "${appimages[0]}"
           dpkg-deb --info "${debs[0]}" >/dev/null
           mkdir -p release-staging
-          install -m 0644 "${debs[0]}" "release-staging/PrismPad-v0.1.0-ubuntu-24.04-x64.deb"
-          install -m 0755 "${appimages[0]}" "release-staging/PrismPad-v0.1.0-linux-x64.AppImage"
+          install -m 0644 "${debs[0]}" "release-staging/PrismPad-v0.1.1-ubuntu-24.04-x64.deb"
+          install -m 0755 "${appimages[0]}" "release-staging/PrismPad-v0.1.1-linux-x64.AppImage"
           staged=(release-staging/*)
           test ${#staged[@]} -eq 2
           for asset in "${staged[@]}"; do
@@ -194,8 +194,8 @@ jobs:
           $portable = Get-Item 'src-tauri/target/release/prism-pad.exe'
           if ($portable.Length -eq 0) { throw 'Portable executable is empty' }
           New-Item -ItemType Directory -Path 'release-staging' -Force | Out-Null
-          Copy-Item $portable.FullName 'release-staging/PrismPad-v0.1.0-windows-x64-portable.exe'
-          Copy-Item $installers[0].FullName 'release-staging/PrismPad-v0.1.0-windows-x64-setup.exe'
+          Copy-Item $portable.FullName 'release-staging/PrismPad-v0.1.1-windows-x64-portable.exe'
+          Copy-Item $installers[0].FullName 'release-staging/PrismPad-v0.1.1-windows-x64-setup.exe'
           $staged = @(Get-ChildItem 'release-staging' -File)
           if ($staged.Count -ne 2) { throw "Expected two staged Windows packages; received $($staged.Count)" }
           foreach ($asset in $staged) {
@@ -209,7 +209,7 @@ jobs:
           path: release-staging/
 
   publish-release:
-    name: Publish PrismPad v0.1.0
+    name: Publish PrismPad v0.1.1
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-packages
     runs-on: ubuntu-24.04
@@ -221,7 +221,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: prismpad-*-v0.1.0
+          pattern: prismpad-*-v0.1.1
           path: release-assets
           merge-multiple: true
       - name: Assert exact public assets
@@ -229,10 +229,10 @@ jobs:
         run: |
           set -euo pipefail
           assets=(
-            "release-assets/PrismPad-v0.1.0-windows-x64-portable.exe"
-            "release-assets/PrismPad-v0.1.0-windows-x64-setup.exe"
-            "release-assets/PrismPad-v0.1.0-linux-x64.AppImage"
-            "release-assets/PrismPad-v0.1.0-ubuntu-24.04-x64.deb"
+            "release-assets/PrismPad-v0.1.1-windows-x64-portable.exe"
+            "release-assets/PrismPad-v0.1.1-windows-x64-setup.exe"
+            "release-assets/PrismPad-v0.1.1-linux-x64.AppImage"
+            "release-assets/PrismPad-v0.1.1-ubuntu-24.04-x64.deb"
           )
           test "$(find release-assets -mindepth 1 -maxdepth 1 | wc -l)" -eq 4
           for asset in "${assets[@]}"; do
@@ -282,13 +282,13 @@ jobs:
         run: |
           set -euo pipefail
           assets=(
-            "release-assets/PrismPad-v0.1.0-windows-x64-portable.exe"
-            "release-assets/PrismPad-v0.1.0-windows-x64-setup.exe"
-            "release-assets/PrismPad-v0.1.0-linux-x64.AppImage"
-            "release-assets/PrismPad-v0.1.0-ubuntu-24.04-x64.deb"
+            "release-assets/PrismPad-v0.1.1-windows-x64-portable.exe"
+            "release-assets/PrismPad-v0.1.1-windows-x64-setup.exe"
+            "release-assets/PrismPad-v0.1.1-linux-x64.AppImage"
+            "release-assets/PrismPad-v0.1.1-ubuntu-24.04-x64.deb"
           )
           gh release create "$TAG" \
             "${assets[@]}" \
             --target "$GITHUB_SHA" \
-            --title "PrismPad v0.1.0" \
+            --title "PrismPad v0.1.1" \
             --notes-file RELEASE_NOTES.md

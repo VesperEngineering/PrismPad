@@ -8,10 +8,10 @@ const iconPath = 'docs/assets/prismpad-icon.png';
 const workflowPath = '.github/workflows/release.yml';
 const notesPath = 'RELEASE_NOTES.md';
 const releaseAssets = [
-  'PrismPad-v0.1.0-windows-x64-portable.exe',
-  'PrismPad-v0.1.0-windows-x64-setup.exe',
-  'PrismPad-v0.1.0-linux-x64.AppImage',
-  'PrismPad-v0.1.0-ubuntu-24.04-x64.deb'
+  'PrismPad-v0.1.1-windows-x64-portable.exe',
+  'PrismPad-v0.1.1-windows-x64-setup.exe',
+  'PrismPad-v0.1.1-linux-x64.AppImage',
+  'PrismPad-v0.1.1-ubuntu-24.04-x64.deb'
 ];
 
 describe('public release presentation', () => {
@@ -32,10 +32,10 @@ describe('public release presentation', () => {
   });
 });
 
-describe('v0.1.0 release publication', () => {
+describe('v0.1.1 release publication', () => {
   it('documents the stable release scope and unsigned installer warning', () => {
     const notes = read(notesPath);
-    expect(notes).toContain('# PrismPad v0.1.0');
+    expect(notes).toContain('# PrismPad v0.1.1');
     expect(notes).toContain('Windows 10/11');
     expect(notes).toContain('Ubuntu 24.04');
     expect(notes).toContain('boxed tabs');
@@ -48,8 +48,8 @@ describe('v0.1.0 release publication', () => {
 
   it('validates pull requests but publishes only from a main-branch push', () => {
     const workflow = read(workflowPath);
-    expect(workflow).toContain('VERSION: 0.1.0');
-    expect(workflow).toContain('TAG: v0.1.0');
+    expect(workflow).toContain('VERSION: 0.1.1');
+    expect(workflow).toContain('TAG: v0.1.1');
     expect(workflow).toContain('node scripts/assert-release-version.mjs "$VERSION"');
     expect(workflow).toContain('permissions:\n  contents: read');
     expect(workflow).toContain('on:\n  pull_request:');

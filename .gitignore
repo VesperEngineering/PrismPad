@@ -1,6 +1,7 @@
 .worktrees/
 node_modules/
 dist/
+release-staging/
 target/
 src-tauri/icons/
 .superpowers/

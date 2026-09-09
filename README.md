@@ -126,6 +126,6 @@ Build release bundles with `npm run tauri build`. Package outputs are written to
 - Ubuntu DEB: `src-tauri/target/release/bundle/deb/*.deb` (install with `sudo apt install ./src-tauri/target/release/bundle/deb/<package>.deb`).
 - Ubuntu AppImage: `src-tauri/target/release/bundle/appimage/*.AppImage` (mark it executable with `chmod +x <file>.AppImage`, then run it).
 
-The guarded v0.1.0 release publishes exactly four clearly named downloads: `PrismPad-v0.1.0-windows-x64-portable.exe`, `PrismPad-v0.1.0-windows-x64-setup.exe`, `PrismPad-v0.1.0-linux-x64.AppImage`, and `PrismPad-v0.1.0-ubuntu-24.04-x64.deb`. The portable choices are the Windows executable and Linux AppImage; the NSIS and Debian files are installers.
+The guarded v0.1.1 release publishes exactly four clearly named downloads: `PrismPad-v0.1.1-windows-x64-portable.exe`, `PrismPad-v0.1.1-windows-x64-setup.exe`, `PrismPad-v0.1.1-linux-x64.AppImage`, and `PrismPad-v0.1.1-ubuntu-24.04-x64.deb`. The portable choices are the Windows executable and Linux AppImage; the NSIS and Debian files are installers.
 
 The separate CI workflow retains validated bundles, driver logs, and a required performance report as temporary workflow artifacts. The public release attaches only the four packages above after Windows and Ubuntu validation succeeds. This release is unsigned; Windows may show a Microsoft Defender SmartScreen warning. Code signing requires a future Vesper Applied LLC Authenticode certificate and protected signing configuration.
