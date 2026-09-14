@@ -108,7 +108,7 @@ jobs:
           e762bea85c8eb0d4b3508d46e5c1f037f717d0f9303ae3b4aafc8b04991fa1ef  linuxdeploy-x86_64.AppImage
           cb379f9b0733e9ad9f8bd78f8c2fa038aef2478523bb7d4c8e64ff6a1ea3501a  linuxdeploy-plugin-gtk.sh
           c107b49d84edbffc6ab226ed1007e0626a4f7aa2c3a36b7782bef62351d49e94  linuxdeploy-plugin-gstreamer.sh
-          1da16a46fa5e058ae740e7c35ed0d36d86cb869ac9cc8a5fd9a1847d7978d99a  linuxdeploy-plugin-appimage.AppImage
+          0441769ab38009504d2678c38cd7e526955388dd30a215b4a20afaa5471652f2  linuxdeploy-plugin-appimage.AppImage
           SHA256SUMS
           (cd "$tauri_cache" && sha256sum --check appimage-helper-sha256sums.txt)
           chmod 0755 \
