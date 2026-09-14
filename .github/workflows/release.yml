@@ -79,6 +79,7 @@ jobs:
       - name: Audit offline boundary
         run: npm run audit:offline
       - name: Preseed verified Tauri AppImage helpers
+        # Keep helper digests aligned with tests/release-publication.test.ts.
         if: runner.os == 'Linux'
         shell: bash
         run: |

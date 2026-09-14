@@ -155,7 +155,7 @@ describe('v0.1.1 release publication', () => {
         filename: 'linuxdeploy-plugin-appimage.AppImage',
         source:
           'https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage',
-        sha256: '1da16a46fa5e058ae740e7c35ed0d36d86cb869ac9cc8a5fd9a1847d7978d99a'
+        sha256: '0441769ab38009504d2678c38cd7e526955388dd30a215b4a20afaa5471652f2'
       }
     ];
 
